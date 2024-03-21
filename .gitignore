@@ -1,0 +1,9 @@
+build
+build_web
+
+*.sublime-workspace
+*.sublime-project
+
+todo.tasks
+examples/Maemi
+examples/scratch
