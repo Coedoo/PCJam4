@@ -5,5 +5,3 @@ build_web
 *.sublime-project
 
 todo.tasks
-examples/Maemi
-examples/scratch
