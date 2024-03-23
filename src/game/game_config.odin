@@ -1,3 +1,6 @@
 package game
 
 PLAYER_MOVE_SPEED :: 5
+
+BOSS_HP :: 1000
+BOSS_COLL_SIZE :: v2{1, 2}

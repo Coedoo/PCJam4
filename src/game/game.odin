@@ -14,9 +14,12 @@ GameState :: struct {
     camera: dm.Camera,
 
     player: Player,
+    playerHP: int,
     playerBullets: [dynamic]Bullet,
 
     level: Level,
+
+    boss: Boss,
 }
 
 gameState: ^GameState
@@ -71,11 +74,10 @@ SpawnBullet :: proc(position: v2, rotation: f32) {
 
 @export
 PreGameLoad : dm.PreGameLoad : proc(assets: ^dm.Assets) {
-    dm.RegisterAsset("maemi.png", dm.TextureAssetDescriptor {
-        filter = .Point
-    })
+    dm.RegisterAsset("maemi.png", dm.TextureAssetDescriptor {})
 
     dm.RegisterAsset("tiles.png", dm.TextureAssetDescriptor{})
+    dm.RegisterAsset("icons_ui.png", dm.TextureAssetDescriptor{})
     dm.RegisterAsset("level.ldtk", dm.RawFileAssetDescriptor{})
 }
 
@@ -101,10 +103,22 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
     MaemiCharacter.muzzleOffset = {-0.25, -0.2}
 
     // Player
+    LoadLevel(gameState)
+    GameReset()
+}
+
+GameReset :: proc() {
+    gameState.playerHP = 3
+    gameState.player.position = {-1, -1}
     gameState.player.character = MaemiCharacter
     gameState.player.wallCollisionSize = {1, 0.2}
 
-    LoadLevel(gameState)
+    // Boss
+    gameState.boss.position = {2, 1}
+    gameState.boss.hp = BOSS_HP
+    gameState.boss.isAlive = true
+
+    clear(&gameState.playerBullets)
 }
 
 @(export)
@@ -117,7 +131,8 @@ GameUpdate : dm.GameUpdate : proc(state: rawptr) {
         UpdateBullet(&bullet)
     }
 
-
+    // Player bullets
+    bossBounds := dm.CreateBounds(gameState.boss.position, BOSS_COLL_SIZE)
     #reverse for bullet, i in gameState.playerBullets {
         for wall in gameState.level.walls {
             if dm.CheckCollisionBoundsCircle(wall.bounds, bullet.position, bullet.radius) {
@@ -125,10 +140,26 @@ GameUpdate : dm.GameUpdate : proc(state: rawptr) {
                 break
             }
         }
+
+        if gameState.boss.isAlive {
+            if dm.CheckCollisionBoundsCircle(bossBounds, bullet.position, bullet.radius) {
+                unordered_remove(&gameState.playerBullets, i)
+
+                gameState.boss.hp -= 20
+                if gameState.boss.hp <= 0 {
+                    gameState.boss.isAlive = false
+                }
+
+                break
+            }
+        }
     }
+
+
 
     // DEBUG
     dm.DrawBox2D(dm.renderCtx, gameState.player.position, gameState.player.wallCollisionSize, false, dm.RED)
+    dm.DrawBox2D(dm.renderCtx, gameState.boss.position, BOSS_COLL_SIZE, false, dm.GREEN)
 
     for wall in gameState.level.walls {
         // dm.DrawBox2D(dm.renderCtx, wall.position, wall.size, false)
@@ -137,6 +168,10 @@ GameUpdate : dm.GameUpdate : proc(state: rawptr) {
 
     for bullet in gameState.playerBullets {
         dm.DrawCircle(dm.renderCtx, bullet.position, bullet.radius, false)
+    }
+
+    if dm.GetKeyState(.R) == .JustPressed {
+        GameReset()
     }
 }
 
@@ -171,10 +206,19 @@ GameRender : dm.GameRender : proc(state: rawptr) {
         rotation = player.gunRotation
     )
 
+    // Boss
+    boss := &gameState.boss
+    if boss.isAlive {
+        dm.DrawBlankSprite(boss.position, {1, 2}, dm.RED)
+    }
 
+    // Bullets
     for &bullet in gameState.playerBullets {
         dm.DrawSprite(bullet.sprite, bullet.position, rotation = bullet.rotation)
     }
+
+    // UI
+    DrawGameUI()
 
     dm.DrawBlankSprite({0,0}, {0.1, 0.1}, dm.RED)
 }
