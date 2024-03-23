@@ -114,6 +114,12 @@ main :: proc() {
 
             case dm.SoundAssetDescriptor:
                 asset.handle = cast(dm.Handle) dm.LoadSound(path)
+
+            case dm.RawFileAssetDescriptor:
+                data, ok := os.read_entire_file(path)
+                if ok {
+                    asset.fileData = data
+                }
             }
         }
     }
@@ -159,6 +165,7 @@ main :: proc() {
                 }
 
             case dm.ShaderAssetDescriptor:
+            case dm.RawFileAssetDescriptor: // @TODO: I'm not sure how to handle that, or even if I should?
             }
 
         }

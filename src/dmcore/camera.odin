@@ -89,10 +89,11 @@ ScreenToWorldSpace :: proc(camera: Camera, point: iv2, screenSize: iv2) -> v3 {
     clip := v2{f32(point.x) / f32(screenSize.x), f32(point.y) / f32(screenSize.y)}
     clip = clip * 2 - 1
 
+    // @TODO: I don't understand why it works....
     vp := GetVPMatrix(camera)
     p := math.inverse(vp) * v4{clip.x, -clip.y, -1, 1}
 
-    return v3{p.x, p.y, p.z}
+    return v3{p.x + camera.position.x * 2, p.y + camera.position.y * 2, p.z}
 }
 
 GetCameraBounds :: proc(camera: Camera) -> Bounds2D {

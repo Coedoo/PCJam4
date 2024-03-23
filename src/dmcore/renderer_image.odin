@@ -127,14 +127,14 @@ CreateSprite :: proc {
 //     }
 // }
 
-CreateSpriteFromTextureRect :: proc(texture: TexHandle, rect: RectInt) -> Sprite {
+CreateSpriteFromTextureRect :: proc(texture: TexHandle, rect: RectInt, origin := v2{0.5, 0.5}) -> Sprite {
     return {
         texture = texture,
 
         texturePos  = {rect.x, rect.y},
         textureSize = {rect.width, rect.height},
 
-        origin = {0.5, 0.5},
+        origin = origin,
 
         tint = {1, 1, 1, 1},
 

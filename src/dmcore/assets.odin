@@ -20,16 +20,21 @@ FontAssetDescriptor :: struct {
 SoundAssetDescriptor :: struct {
 }
 
+RawFileAssetDescriptor :: struct {
+}
+
 AssetDescriptor :: union {
     TextureAssetDescriptor,
     ShaderAssetDescriptor,
     FontAssetDescriptor,
     SoundAssetDescriptor,
+    RawFileAssetDescriptor,
 }
 
 AssetData :: struct {
     fileName: string,
-    // isLoaded: bool,
+
+    fileData: []u8,
 
     lastWriteTime: os.File_Time,
 
@@ -82,6 +87,13 @@ RegisterAssetCtx :: proc(assets: ^Assets, fileName: string, desc: AssetDescripto
     }
 }
 
+GetAssetData :: proc(fileName: string) -> ^AssetData {
+    return GetAssetDataCtx(assets, fileName)
+}
+
+GetAssetDataCtx :: proc(assets: ^Assets, fileName: string) -> ^AssetData {
+    return &assets.assetsMap[fileName]
+}
 
 
 GetAsset :: proc(fileName: string) -> Handle {
@@ -98,4 +110,18 @@ GetTextureAsset :: proc(fileName: string) -> TexHandle {
 
 GetTextureAssetCtx :: proc(assets: ^Assets, fileName: string) -> TexHandle {
     return cast(TexHandle) GetAssetCtx(assets, fileName)
+}
+
+// @TODO: ReloadAsset
+
+ReleaseAssetData :: proc(fileName: string) {
+    ReleaseAssetDataCtx(assets, fileName)
+}
+
+ReleaseAssetDataCtx :: proc(assets: ^Assets, fileName: string) {
+    assetData, ok := &assets.assetsMap[fileName]
+    if ok && assetData.fileData != nil {
+        delete(assetData.fileData)
+        assetData.fileData = nil
+    }
 }

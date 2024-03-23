@@ -109,7 +109,7 @@ DrawSpriteCtx :: proc(ctx: ^RenderContext, sprite: Sprite, position: v2,
     cmd.size = size * flip
     cmd.texSource = {texPos.x, texPos.y, sprite.textureSize.x, sprite.textureSize.y}
     cmd.rotation = rotation
-    cmd.tint = color
+    cmd.tint = color * sprite.tint
     cmd.texture = sprite.texture
     cmd.shader  = ctx.defaultShaders[.Sprite]
 
