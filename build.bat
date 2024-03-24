@@ -12,7 +12,7 @@ robocopy ..\lib . /s > nul
 
 set exeName=DanMofu
 
-set flags=-out:%exeName%.exe 
+set flags=""
 rem set flags=%flags% -max-error-count:5
 
 if "%1" == "release" (
@@ -22,10 +22,17 @@ if "%1" == "release" (
     set flags=%flags% -o:none -debug
 )
 
+set justGame=F
+if "%1" == "justGame" set justGame=T
+if "%2" == "justGame" set justGame=T
 
-del %exeName%.exe
+if "%justGame%"=="F" (
+    echo "Building Platform"
+    del %exeName%.exe
+    odin build ..\src\platform_win32 %flags% -out:%exeName%.exe 
+)
 
-odin build ..\%game_path% -debug -build-mode=dll -out="Game.dll" && ^
-odin run ..\src\platform_win32 %flags%
+rem odin build ..\%game_path% %flags% -build-mode=dll -out="Game.dll" && ^%exeName%.exe
+odin build ..\%game_path% %flags% -build-mode=dll -out="Game.dll"
 
 popd

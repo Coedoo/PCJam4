@@ -88,7 +88,7 @@ ControlPlayer :: proc(player: ^Player) {
     if dm.GetMouseButton(.Left) == .JustPressed {
         for i in 0..=5 {
             variation := rand.float32() * 0.2 - 0.1
-            SpawnBullet(muzzlePos, angle + variation)
+            SpawnBullet(muzzlePos, angle + variation, true)
         }
     }
 
@@ -114,4 +114,55 @@ ControlPlayer :: proc(player: ^Player) {
     else {
         player.heading = .West
     }
+}
+
+//////////////////
+
+Bullet :: struct {
+    startPosition: v2,
+    startRotation: f32,
+    spawnTime: f32,
+
+    position: v2,
+    rotation: f32,
+
+    sprite: dm.Sprite,
+
+    radius: f32,
+
+    speed: f32,
+
+    isPlayerBullet: bool,
+}
+
+MaemiCharacter: Character
+
+UpdateBullet :: proc(bullet: ^Bullet) {
+    bullet.rotation = bullet.startRotation
+    direction := v2{
+        math.cos(bullet.rotation),
+        math.sin(bullet.rotation),
+    }
+
+    lifeTime := f32(dm.time.gameTime) - bullet.spawnTime
+    bullet.position = bullet.startPosition + direction * bullet.speed * lifeTime
+}
+
+SpawnBullet :: proc(position: v2, rotation: f32, isPlayerBullet: bool) {
+    bullet := Bullet{
+        startPosition = position,
+        startRotation = rotation,
+        spawnTime = f32(dm.time.gameTime),
+
+        sprite = dm.CreateSprite(dm.renderCtx.whiteTexture, {0, 0, 1, 1}),
+
+        radius = 0.2,
+        speed = 10,
+
+        isPlayerBullet = isPlayerBullet
+    }
+
+    bullet.sprite.scale = 0.2
+
+    append(&gameState.bullets, bullet)
 }

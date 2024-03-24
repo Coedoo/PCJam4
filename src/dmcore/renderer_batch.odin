@@ -137,6 +137,9 @@ DrawCircle :: proc(ctx: ^RenderContext, pos: v2, radius: f32, screenSpace: bool,
         return pos
     }
 
+    append(&batch.buffer, PrimitiveVertex{ToV3(pos), color})
+    append(&batch.buffer, PrimitiveVertex{GetPosition(0, pos, radius), color})
+
     for i in 0..<resolution {
         posA := GetPosition(i, pos, radius)
         posB := GetPosition(i + 1, pos, radius)
