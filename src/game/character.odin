@@ -31,6 +31,8 @@ Player :: struct {
     heading: Heading, 
     gunRotation: f32,
 
+    noHurtyTimer: f32,
+
     wallCollisionSize: v2,
 
     character: Character,

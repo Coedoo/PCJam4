@@ -91,3 +91,9 @@ RaycastAABB2D :: proc(ray: Ray2D, aabb: Bounds2D, distance := max(f32)) -> (bool
     return tMax >= tMin && tMax > 0 && tMin > 0 && tMin < distance, tMin
 }
 
+//////
+
+CosRange :: proc(a, b:f32, rad: f32) -> f32 {
+    s := math.cos(rad) * 0.5 + 0.5
+    return a + (b - a) * s
+}

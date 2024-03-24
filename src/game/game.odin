@@ -61,8 +61,6 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
     MaemiCharacter.collisionOffset = {0, 0.5}
     MaemiCharacter.collisionRadius = 0.2
 
-    gameState.boss.sequence = aaaa
-
     // Player
     LoadLevel(gameState)
     GameReset()
@@ -109,25 +107,33 @@ GameReset :: proc() {
     gameState.player.position = {-1, -1}
     gameState.player.character = MaemiCharacter
     gameState.player.wallCollisionSize = {1, 0.2}
+    gameState.player.noHurtyTimer = NOHURTY_TIME
 
     // Boss
     gameState.boss.position = {2, 1}
     gameState.boss.hp = BOSS_HP
     gameState.boss.isAlive = true
 
+    gameState.boss.waitingTimer = PRE_SEQUENCE_WAIT
+    gameState.boss.sequence = cccc
+
+
+    gameState.gameStarted = true
+
     clear(&gameState.bullets)
 }
 
 GameplayUpdate :: proc() {
+
     ControlPlayer(&gameState.player)
 
-    for &bullet in gameState.bullets {
-        UpdateBullet(&bullet)
-    }
+    gameState.player.noHurtyTimer -= f32(dm.time.deltaTime)
+    gameState.player.noHurtyTimer = max(0, gameState.player.noHurtyTimer)
 
-    // Player bullets
     bossBounds := dm.CreateBounds(gameState.boss.position, BOSS_COLL_SIZE)
-    #reverse for bullet, i in gameState.bullets {
+    #reverse for &bullet, i in gameState.bullets {
+        UpdateBullet(&bullet)
+
         for wall in gameState.level.walls {
             if dm.CheckCollisionBoundsCircle(wall.bounds, bullet.position, bullet.radius) {
                 unordered_remove(&gameState.bullets, i)
@@ -142,13 +148,13 @@ GameplayUpdate :: proc() {
                 gameState.boss.hp -= 20
                 if gameState.boss.hp <= 0 {
                     gameState.boss.isAlive = false
+                    clear(&gameState.bullets)
+                    break
                 }
-
-                break
             }
         }
 
-        if bullet.isPlayerBullet == false {
+        if bullet.isPlayerBullet == false && gameState.player.noHurtyTimer == 0 {
             if dm.CheckCollisionCircles(
                 gameState.player.position + gameState.player.character.collisionOffset, 
                 gameState.player.character.collisionRadius, 
@@ -157,13 +163,19 @@ GameplayUpdate :: proc() {
             {
                 clear(&gameState.bullets)
                 gameState.playerHP -= 1
+
+                gameState.player.noHurtyTimer = NOHURTY_TIME
+
+                ResetBossSequence(&gameState.boss)
+
                 break
             }
         }
     }
 
-    RunSequence(&gameState.boss, &aaaa)
-
+    if gameState.boss.isAlive {
+        UpdateBoss(&gameState.boss)
+    }
 
     // DEBUG
     dm.DrawBox2D(dm.renderCtx, gameState.player.position, gameState.player.wallCollisionSize, false, dm.RED)
@@ -189,7 +201,6 @@ GameplayUpdate :: proc() {
 }
 
 GameplayRender :: proc() {
-
     // Level
     for tile in gameState.level.tiles {
         dm.DrawSprite(tile.sprite, tile.position)
@@ -204,9 +215,11 @@ GameplayRender :: proc() {
     character := &player.character
     playerSprite := character.idleSprites[player.heading]
 
-    dm.DrawSprite(playerSprite, player.position)
+    dm.DrawSprite(playerSprite, player.position,
+        color = {1, 1, 1, dm.CosRange(.5, 1, 10 * gameState.player.noHurtyTimer)},
+    )
     dm.DrawSprite(character.gunSprite, player.position + character.gunOffset, 
-        rotation = player.gunRotation
+        rotation = player.gunRotation,
     )
 
     // Boss

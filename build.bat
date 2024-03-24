@@ -32,7 +32,7 @@ if "%justGame%"=="F" (
     odin build ..\src\platform_win32 %flags% -out:%exeName%.exe 
 )
 
-rem odin build ..\%game_path% %flags% -build-mode=dll -out="Game.dll" && ^%exeName%.exe
-odin build ..\%game_path% %flags% -build-mode=dll -out="Game.dll"
+odin build ..\%game_path% %flags% -build-mode=dll -out="Game.dll" && ^%exeName%.exe
+rem odin build ..\%game_path% %flags% -build-mode=dll -out="Game.dll"
 
 popd
