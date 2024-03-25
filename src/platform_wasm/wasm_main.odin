@@ -7,7 +7,6 @@ import "core:mem"
 import "core:strings"
 
 import dm "../dmcore"
-import "../dmcore/globals"
 import gl "vendor:wasm/WebGL"
 
 import "vendor:wasm/js"
@@ -15,7 +14,7 @@ import "vendor:wasm/js"
 import coreTime "core:time"
 
 // import game "../../examples/Arkanoid/src"
-import game "../../examples/Scratch/src"
+import game "../game"
 
 platform: dm.Platform
 
@@ -34,17 +33,23 @@ FileLoadedCallback :: proc(data: []u8) {
 
     switch desc in asset.descriptor {
     case dm.TextureAssetDescriptor:
-        asset.handle = cast(dm.Handle) dm.LoadTextureFromMemory(data, platform.renderCtx, desc.filter)
+        asset.handle = cast(dm.Handle) dm.LoadTextureFromMemoryCtx(platform.renderCtx, data, desc.filter)
+        delete(data)
 
     case dm.ShaderAssetDescriptor:
         str := strings.string_from_ptr(raw_data(data), len(data))
         asset.handle = cast(dm.Handle) dm.CompileShaderSource(platform.renderCtx, str)
+        delete(data)
 
     case dm.FontAssetDescriptor:
         panic("FIX SUPPORT OF FONT ASSET LOADING")
 
+    case dm.RawFileAssetDescriptor:
+        asset.fileData = data
+
     case dm.SoundAssetDescriptor:
-        asset.handle = cast(dm.Handle) dm.LoadSound(&platform.audio, data)
+        asset.handle = cast(dm.Handle) dm.LoadSoundFromMemoryCtx(&platform.audio, data)
+        delete(data)
     }
 
     assetsLoadingState.nowLoading = assetsLoadingState.nowLoading.next
@@ -91,8 +96,7 @@ main :: proc() {
 
     ////////////
 
-    globals.UpdateStatePointer(&platform)
-
+    dm.UpdateStatePointer(&platform)
     game.PreGameLoad(&platform.assets)
 
     assetsLoadingState.maxCount = len(platform.assets.assetsMap)
@@ -176,7 +180,7 @@ step :: proc "contextless" (delta: f32, ctx: ^runtime.Context) {
     dm.muiBegin(mui)
 
     when ODIN_DEBUG {
-        if dm.GetKeyState(&input, .U) == .JustPressed {
+        if dm.GetKeyStateCtx(&input, .U) == .JustPressed {
             debugState = !debugState
             pauseGame = debugState
 

@@ -10,8 +10,15 @@ import "../ldtk"
 v2 :: dm.v2
 iv2 :: dm.iv2
 
+GameStage :: enum {
+    Menu,
+    Gameplay,
+    Won,
+    Lost,
+}
+
 GameState :: struct {
-    gameStarted: bool,
+    gameStage: GameStage,
 
     menu: Menu,
 
@@ -25,6 +32,8 @@ GameState :: struct {
     level: Level,
 
     boss: Boss,
+
+    levelEndFadeTimer: f32,
 }
 
 gameState: ^GameState
@@ -63,18 +72,19 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
 
     // Player
     LoadLevel(gameState)
-    GameReset()
+    
+    GameReset(.Menu)
 }
 
 @(export)
 GameUpdate : dm.GameUpdate : proc(state: rawptr) {
     gameState := transmute(^GameState) state
 
-    if gameState.gameStarted {
-        GameplayUpdate()
-    }
-    else {
-        UpdateMenu(&gameState.menu)
+    switch gameState.gameStage {
+    case .Menu:     UpdateMenu(&gameState.menu)
+    case .Gameplay: GameplayUpdate()
+    case .Lost:     UpdateGameLost(&gameState.menu)
+    case .Won:      UpdateGameWon(&gameState.menu)
     }
 
 }
@@ -91,18 +101,17 @@ GameRender : dm.GameRender : proc(state: rawptr) {
     dm.SetCamera(gameState.camera)
     dm.ClearColor({0.1, 0.2, 0.4, 1})
 
-    if gameState.gameStarted {
-        GameplayRender()
+    switch gameState.gameStage {
+    case .Gameplay: GameplayRender()
+    case .Menu, .Lost, .Won: DrawMenu(&gameState.menu)
     }
-    else {
-        DrawMenu(&gameState.menu)
-    }
+
 }
 
 
 /////////////////
 
-GameReset :: proc() {
+GameReset :: proc(toStage: GameStage) {
     gameState.playerHP = 3
     gameState.player.position = {-1, -1}
     gameState.player.character = MaemiCharacter
@@ -118,17 +127,22 @@ GameReset :: proc() {
     gameState.boss.sequence = cccc
 
 
-    gameState.gameStarted = true
+    gameState.gameStage = toStage
 
     clear(&gameState.bullets)
 }
 
 GameplayUpdate :: proc() {
+    if gameState.playerHP > 0 {
+        ControlPlayer(&gameState.player)
 
-    ControlPlayer(&gameState.player)
+        gameState.player.noHurtyTimer -= f32(dm.time.deltaTime)
+        gameState.player.noHurtyTimer = max(0, gameState.player.noHurtyTimer)
+    }
 
-    gameState.player.noHurtyTimer -= f32(dm.time.deltaTime)
-    gameState.player.noHurtyTimer = max(0, gameState.player.noHurtyTimer)
+    if gameState.boss.isAlive {
+        UpdateBoss(&gameState.boss)
+    }
 
     bossBounds := dm.CreateBounds(gameState.boss.position, BOSS_COLL_SIZE)
     #reverse for &bullet, i in gameState.bullets {
@@ -149,12 +163,18 @@ GameplayUpdate :: proc() {
                 if gameState.boss.hp <= 0 {
                     gameState.boss.isAlive = false
                     clear(&gameState.bullets)
+
+                    gameState.levelEndFadeTimer = END_GAME_FADE_TIME
+
                     break
                 }
             }
         }
 
-        if bullet.isPlayerBullet == false && gameState.player.noHurtyTimer == 0 {
+        if bullet.isPlayerBullet == false && 
+           gameState.player.noHurtyTimer == 0 &&
+           gameState.playerHP > 0
+        {
             if dm.CheckCollisionCircles(
                 gameState.player.position + gameState.player.character.collisionOffset, 
                 gameState.player.character.collisionRadius, 
@@ -168,13 +188,22 @@ GameplayUpdate :: proc() {
 
                 ResetBossSequence(&gameState.boss)
 
+                if gameState.playerHP == 0 {
+                    gameState.levelEndFadeTimer = END_GAME_FADE_TIME
+                }
+
                 break
             }
         }
     }
 
-    if gameState.boss.isAlive {
-        UpdateBoss(&gameState.boss)
+    if gameState.playerHP == 0 ||
+       gameState.boss.isAlive == false
+    {
+        gameState.levelEndFadeTimer -= f32(dm.time.deltaTime)
+        if gameState.levelEndFadeTimer <= 0 {
+            gameState.gameStage = .Won if gameState.boss.isAlive == false else .Lost
+        }
     }
 
     // DEBUG
@@ -196,7 +225,7 @@ GameplayUpdate :: proc() {
     }
 
     if dm.GetKeyState(.R) == .JustPressed {
-        GameReset()
+        GameReset(.Gameplay)
     }
 }
 
@@ -211,16 +240,18 @@ GameplayRender :: proc() {
     }
 
     // Player
-    player := &gameState.player
-    character := &player.character
-    playerSprite := character.idleSprites[player.heading]
+    if gameState.playerHP > 0 {
+        player := &gameState.player
+        character := &player.character
+        playerSprite := character.idleSprites[player.heading]
 
-    dm.DrawSprite(playerSprite, player.position,
-        color = {1, 1, 1, dm.CosRange(.5, 1, 10 * gameState.player.noHurtyTimer)},
-    )
-    dm.DrawSprite(character.gunSprite, player.position + character.gunOffset, 
-        rotation = player.gunRotation,
-    )
+        dm.DrawSprite(playerSprite, player.position,
+            color = {1, 1, 1, dm.CosRange(.5, 1, 10 * gameState.player.noHurtyTimer)},
+        )
+        dm.DrawSprite(character.gunSprite, player.position + character.gunOffset, 
+            rotation = player.gunRotation,
+        )
+    }
 
     // Boss
     boss := &gameState.boss
@@ -235,9 +266,18 @@ GameplayRender :: proc() {
             color = dm.BLUE if bullet.isPlayerBullet else dm.RED)
     }
 
-
     // UI
     DrawGameUI()
 
-    dm.DrawBlankSprite({0,0}, {0.1, 0.1}, dm.RED)
+    if gameState.playerHP == 0 ||
+       gameState.boss.isAlive == false
+    {
+        alpha := 1 - gameState.levelEndFadeTimer / END_GAME_FADE_TIME
+        dm.DrawRectBlank({0, 0}, dm.ToV2(dm.renderCtx.frameSize), origin = {0, 0}, color = {0, 0, 0, alpha})
+
+        if alpha > 1 {
+            // dm.DrawText(dm.renderCtx, "Kappa", font, {10, 10})
+            DrawMenu(&gameState.menu)
+        }
+    }
 }

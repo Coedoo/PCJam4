@@ -1311,7 +1311,15 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement) {
 	let audioContext = new WebAudioInterface(wasmMemoryInterface);
 	let files = new FilesInterface(wasmMemoryInterface);
 	return {
-		"env": {},
+		"env": {
+			fmaxf: (a, b) => {
+				return Math.max(a, b)
+			},
+
+			fminf: (a, b) => {
+				return Math.min(a, b)
+			}
+		},
 		"odin_env": {
 			write: (fd, ptr, len) => {
 				const str = wasmMemoryInterface.loadString(ptr, len);

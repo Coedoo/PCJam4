@@ -42,6 +42,7 @@ SequenceStep :: union {
     WaitSeconds,
     FireCircle,
     Sequence,
+    MoveTo,
 }
 
 WaitSeconds :: struct {
@@ -53,6 +54,11 @@ FireCircle :: struct {
     radius: f32,
     spawnOffset: v2,
     iterAngle: f32,
+}
+
+MoveTo :: struct {
+    pos: v2,
+    time: f32,
 }
 
 //////
@@ -109,21 +115,30 @@ bbbb := Sequence{
 cccc := Sequence{
     type = .Parallel,
     steps = {
-        Sequence {
-            stopPredicate = AfterIter{6},
-            steps = {
-                FireCircle{10, 1, 0, 2},
-                WaitSeconds{0.1}
-            },
-        },
+        // Sequence {
+        //     stopPredicate = AfterIter{6},
+        //     steps = {
+        //         FireCircle{10, 1, 0, 2},
+        //         WaitSeconds{0.1}
+        //     },
+        // },
+
+        // Sequence {
+        //     stopPredicate = AfterIter{6},
+        //     steps = {
+        //         FireCircle{10, 1, 0, -2},
+        //         WaitSeconds{0.1}
+        //     }
+        // },
 
         Sequence {
-            stopPredicate = AfterIter{6},
             steps = {
-                FireCircle{10, 1, 0, -2},
-                WaitSeconds{0.1}
+                MoveTo{{5, 5}, 2},
+                WaitSeconds{2},
+                MoveTo{{-5, 3}, 2},
+                WaitSeconds{2},
             }
-        },
+        }
 
     }
 }
@@ -147,8 +162,6 @@ ResetSequence :: proc(seq: ^Sequence) {
     seq.iterations = 0
     seq.stepT = 0
     seq.stepIndex = 0
-
-    fmt.println("RESET")
 
     for &step in seq.steps {
         if subSeq, ok := &step.(Sequence); ok {
@@ -228,8 +241,13 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
         }
         return true
     case Sequence:
-        // @HACK
-        return RunSequence(&gameState.boss, &s)
+        return RunSequence(boss, &s)
+
+    case MoveTo:
+        p := t / s.time
+        boss.position = math.lerp(boss.position, s.pos, p)
+
+        return p >= 1
     }
 
     // fmt.eprintln("Unhandled step return", step)

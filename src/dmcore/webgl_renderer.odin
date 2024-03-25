@@ -41,7 +41,7 @@ InitRenderContext :: proc(ctx: ^RenderContext) {
 
 
     texData := []u8{255, 255, 255, 255}
-    ctx.whiteTexture = CreateTexture(texData, 1, 1, 4, ctx, .Point)
+    ctx.whiteTexture = CreateTexture(ctx, texData, 1, 1, 4, .Point)
 
     InitRectBatch(ctx, &ctx.defaultBatch, 2048)
     CreatePrimitiveBatch(ctx, 4086)

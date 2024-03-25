@@ -3,20 +3,18 @@ package dmcore
 
 import gl "vendor:wasm/WebGL"
 
-Texture_wgl :: struct {
-    using info: Texture,
-
-    texId: gl.Texture,
+TextureBackend :: struct {
+    texId: gl.Texture
 }
 
-_CreateTexture :: proc(rawData: []u8, width, height, channels: int, renderCtx: ^RenderContext, filter: TextureFilter) -> TexHandle {
-    texture := CreateElement(renderCtx.textures)
+// _InitTexture :: proc(renderCtx: ^RenderContext, rawData: []u8, width, height, channels: int, filter: TextureFilter) 
+_InitTexture :: proc(ctx: ^RenderContext, texture: ^Texture, rawData: []u8, width, height, channels: int, filter: TextureFilter) {
 
     texture.width  = i32(width)
     texture.height = i32(height)
 
     id := gl.CreateTexture()
-    texture.backendData = transmute(int) id
+    texture.texId = id
     gl.BindTexture(gl.TEXTURE_2D, id)
 
     switch filter {
@@ -38,6 +36,4 @@ _CreateTexture :: proc(rawData: []u8, width, height, channels: int, renderCtx: ^
     gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, i32(width), i32(height), 0, gl.RGBA, gl.UNSIGNED_BYTE, len(rawData), raw_data(rawData))
 
     gl.BindTexture(gl.TEXTURE_2D, 0)
-
-    return texture.handle
 }

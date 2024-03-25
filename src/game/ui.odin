@@ -60,7 +60,8 @@ UpdateMenu:: proc(menu: ^Menu) {
     case .Main:
         if MenuButton(menu, "Start") {
             // SwitchMenuState(menu, .CharacterSelect)
-            gameState.gameStarted = true
+            gameState.gameStage = .Gameplay
+            GameReset(.Gameplay)
         }
         if MenuButton(menu, "Controls") {
             SwitchMenuState(menu, .Controls)
@@ -74,8 +75,10 @@ UpdateMenu:: proc(menu: ^Menu) {
     case .CharacterSelect:
     }
 
-    if MenuButton(menu, "Exit") {
-        SwitchMenuState(menu, .Main)
+    if menu.state != .Main {
+        if MenuButton(menu, "Back") {
+            SwitchMenuState(menu, .Main)
+        }
     }
 
     move := dm.GetAxisInt(.W, .S, .JustPressed)
@@ -101,4 +104,42 @@ DrawMenu :: proc(menu: ^Menu) {
 
         dm.DrawTextCentered(dm.renderCtx, btn, font, {0, f32(i) * font.lineHeight} + offset)
     }
+}
+
+////////////
+
+UpdateGameLost :: proc(menu: ^Menu) {
+    clear(&menu.buttons)
+
+    if MenuButton(menu, "Lost") {
+    }
+    if MenuButton(menu, "Restart") {
+        GameReset(.Gameplay)
+    }
+    if MenuButton(menu, "Back to menu") {
+        gameState.gameStage = .Menu
+    }
+
+    move := dm.GetAxisInt(.W, .S, .JustPressed)
+
+    menu.hotButton += int(move)
+    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons))
+}
+
+UpdateGameWon :: proc(menu: ^Menu) {
+    clear(&menu.buttons)
+
+    if MenuButton(menu, "WON") {
+    }
+    if MenuButton(menu, "Restart") {
+        GameReset(.Gameplay)
+    }
+    if MenuButton(menu, "Back to menu") {
+        gameState.gameStage = .Menu
+    }
+
+    move := dm.GetAxisInt(.W, .S, .JustPressed)
+
+    menu.hotButton += int(move)
+    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons))
 }

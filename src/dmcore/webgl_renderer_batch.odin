@@ -65,8 +65,8 @@ DrawBatch :: proc(ctx: ^RenderContext, batch: ^RectBatch) {
         return
     }
 
-    tex := GetTexture(ctx, batch.texture)
-    gl.BindTexture(gl.TEXTURE_2D, transmute(gl.Texture) tex.backendData)
+    tex := GetTextureCtx(ctx, batch.texture)
+    gl.BindTexture(gl.TEXTURE_2D, tex.texId)
 
     shader := GetElement(ctx.shaders, batch.shader)
     gl.UseProgram(shader.backend.shaderID)
