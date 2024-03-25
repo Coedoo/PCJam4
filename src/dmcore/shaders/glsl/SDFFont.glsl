@@ -39,10 +39,11 @@ out vec4 FragColor;
 uniform sampler2D tex;
 
 void main() {
-    const float smoothing = 4.0/16.0;
+    const float edge = 128.0/255.0;
+    const float aa = 16.0 / 255.0;
 
-    float dist = texture(tex, uv).r;
-    float alpha = smoothstep(0.5 - smoothing, 0.5 + smoothing, dist);
+    float dist = texture(tex, uv).a;
+    float alpha = smoothstep(edge - aa, edge + aa, dist);
 
     FragColor = vec4(color.rgb, alpha);
 }
