@@ -1,5 +1,7 @@
 package dmcore
 
+import "core:fmt"
+
 input: ^Input
 time: ^TimeData
 renderCtx: ^RenderContext
@@ -19,4 +21,10 @@ UpdateStatePointer : UpdateStatePointerFunc : proc(platformPtr: ^Platform) {
     audio     = &platformPtr.audio
     mui       = platformPtr.mui
     assets    = &platformPtr.assets
+
+    fmt.println("Setting state pointers")
+
+    for k, v in assets.assetsMap {
+        fmt.println(k, v)
+    }
 }

@@ -1,6 +1,7 @@
 package dmcore
 
 import "core:fmt"
+import "core:strings"
 import "core:os"
 
 ASSETS_ROOT :: "assets/"
@@ -70,7 +71,7 @@ RegisterAssetCtx :: proc(assets: ^Assets, fileName: string, desc: AssetDescripto
     }
 
     assets.assetsMap[fileName] = AssetData {
-        fileName = fileName,
+        fileName = strings.clone(fileName),
         descriptor = desc,
     }
 

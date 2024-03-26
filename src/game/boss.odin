@@ -12,11 +12,12 @@ Boss :: struct {
     isAlive: bool,
 
     waitingTimer: f32,
-    sequence: Sequence,
+
+    currentSeqIdx: int,
+    sequences: []Sequence,
 }
 
 //////////////////
-
 SequenceType :: enum {
     Serial,
     Parallel,
@@ -57,7 +58,8 @@ FireCircle :: struct {
 }
 
 MoveTo :: struct {
-    pos: v2,
+    _from: v2,
+    to: v2,
     time: f32,
 }
 
@@ -115,27 +117,27 @@ bbbb := Sequence{
 cccc := Sequence{
     type = .Parallel,
     steps = {
-        // Sequence {
-        //     stopPredicate = AfterIter{6},
-        //     steps = {
-        //         FireCircle{10, 1, 0, 2},
-        //         WaitSeconds{0.1}
-        //     },
-        // },
+        Sequence {
+            stopPredicate = AfterIter{6},
+            steps = {
+                FireCircle{10, 1, 0, 2},
+                WaitSeconds{0.1}
+            },
+        },
 
-        // Sequence {
-        //     stopPredicate = AfterIter{6},
-        //     steps = {
-        //         FireCircle{10, 1, 0, -2},
-        //         WaitSeconds{0.1}
-        //     }
-        // },
+        Sequence {
+            stopPredicate = AfterIter{6},
+            steps = {
+                FireCircle{10, 1, 0, -2},
+                WaitSeconds{0.1}
+            }
+        },
 
         Sequence {
             steps = {
-                MoveTo{{5, 5}, 2},
+                MoveTo{to = {5, 5}, time = 1},
                 WaitSeconds{2},
-                MoveTo{{-5, 3}, 2},
+                MoveTo{to = {-5, 3}, time = 1},
                 WaitSeconds{2},
             }
         }
@@ -143,32 +145,39 @@ cccc := Sequence{
     }
 }
 
+// testSeq := []Sequence{aaaa, bbbb, cccc}
+testSeq := []Sequence{bbbb, cccc}
+
 UpdateBoss :: proc(boss: ^Boss) {
     if boss.waitingTimer > 0 {
         boss.waitingTimer -= f32(dm.time.deltaTime)
         return
     }
 
-    RunSequence(boss, &boss.sequence)
+    seq := &boss.sequences[boss.currentSeqIdx]
+    RunSequence(boss, seq)
 }
 
 ResetBossSequence :: proc(boss: ^Boss) {
     boss.waitingTimer = PRE_SEQUENCE_WAIT
-    ResetSequence(&boss.sequence)
+
+    seq := &boss.sequences[boss.currentSeqIdx]
+    ResteSequence(seq, boss)
 }
 
-ResetSequence :: proc(seq: ^Sequence) {
-    seq.sequenceT = 0
-    seq.iterations = 0
-    seq.stepT = 0
-    seq.stepIndex = 0
-
-    for &step in seq.steps {
-        if subSeq, ok := &step.(Sequence); ok {
-            ResetSequence(subSeq)
-        }
+BossNextSequence :: proc(boss: ^Boss) -> bool {
+    boss.currentSeqIdx += 1
+    if boss.currentSeqIdx >= len(boss.sequences) {
+        boss.isAlive = false
+        return false
+    }
+    else {
+        boss.hp = BOSS_HP
+        ResetBossSequence(boss)
+        return true
     }
 }
+
 
 RotOffset :: proc(rot: f32, radius: f32) -> v2 {
     return {
@@ -200,10 +209,11 @@ RunSequence :: proc(boss: ^Boss, sequence: ^Sequence) -> bool {
 
             sequence.stepT = 0
             sequence.stepIndex = (sequence.stepIndex + 1) % len(sequence.steps)
+            ResetStep(&sequence.steps[sequence.stepIndex], boss)
 
-            if seq, ok := &sequence.steps[sequence.stepIndex].(Sequence); ok {
-                ResetSequence(seq)
-            }
+            // if seq, ok := &sequence.steps[sequence.stepIndex].(Sequence); ok {
+            //     ResetSequence(seq)
+            // }
         }
         else {
             sequence.stepT += f32(dm.time.deltaTime)
@@ -224,6 +234,30 @@ RunSequence :: proc(boss: ^Boss, sequence: ^Sequence) -> bool {
     return false
 }
 
+ResteSequence :: proc(seq: ^Sequence, boss: ^Boss) {
+    seq.sequenceT = 0
+    seq.iterations = 0
+    seq.stepT = 0
+    seq.stepIndex = 0
+
+    for &step in seq.steps {
+        ResetStep(&step, boss)
+    }
+}
+
+ResetStep :: proc(step: ^SequenceStep, boss: ^Boss) {
+    switch &s in step {
+    case WaitSeconds:
+    case FireCircle:
+
+    case MoveTo:
+        s._from = boss.position
+
+    case Sequence:
+        ResteSequence(&s, boss)
+    }
+}
+
 RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> bool {
     switch &s in step {
     case WaitSeconds:
@@ -239,13 +273,15 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
             rot := f32(i) / f32(s.count - 1) * 360 + s.iterAngle * f32(iteration)
             SpawnBullet(boss.position + RotOffset(rot, s.radius) + s.spawnOffset, math.to_radians(rot), false)
         }
+
         return true
+    
     case Sequence:
         return RunSequence(boss, &s)
 
     case MoveTo:
         p := t / s.time
-        boss.position = math.lerp(boss.position, s.pos, p)
+        boss.position = math.lerp(s._from, s.to, p)
 
         return p >= 1
     }

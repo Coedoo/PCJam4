@@ -41,7 +41,9 @@ gameState: ^GameState
 @export
 PreGameLoad : dm.PreGameLoad : proc(assets: ^dm.Assets) {
     dm.RegisterAsset("maemi.png", dm.TextureAssetDescriptor {})
+    dm.RegisterAsset("maemi_portrait.png", dm.TextureAssetDescriptor {})
 
+    dm.RegisterAsset("guns.png", dm.TextureAssetDescriptor {})
     dm.RegisterAsset("tiles.png", dm.TextureAssetDescriptor{})
     dm.RegisterAsset("icons_ui.png", dm.TextureAssetDescriptor{})
     dm.RegisterAsset("level.ldtk", dm.RawFileAssetDescriptor{})
@@ -51,29 +53,31 @@ PreGameLoad : dm.PreGameLoad : proc(assets: ^dm.Assets) {
 GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
     gameState = dm.AlocateGameData(platform, GameState)
 
-    gameState.camera = dm.CreateCamera(6, 8./6.)
+    gameState.camera = dm.CreateCamera(4.8, 8./6.)
 
     // Characters
     maemiSprite := dm.GetTextureAsset("maemi.png")
-    MaemiCharacter.idleSprites[.South] = dm.CreateSprite(maemiSprite, {0, 0, 24, 40}, origin = {0.5, 1})
-    MaemiCharacter.idleSprites[.East]  = dm.CreateSprite(maemiSprite, {0, 0, 24, 40}, origin = {0.5, 1})
-    MaemiCharacter.idleSprites[.North] = dm.CreateSprite(maemiSprite, {0, 0, 24, 40}, origin = {0.5, 1})
-    MaemiCharacter.idleSprites[.West]  = dm.CreateSprite(maemiSprite, {0, 0, 24, 40}, origin = {0.5, 1})
+    MaemiCharacter.idleSprites[.South] = dm.CreateSprite(maemiSprite, {0, 1, 32, 48}, origin = {0.5, 1}, frames = 5)
+    MaemiCharacter.idleSprites[.East]  = dm.CreateSprite(maemiSprite, {0, 1, 32, 48}, origin = {0.5, 1}, frames = 5)
+    MaemiCharacter.idleSprites[.North] = dm.CreateSprite(maemiSprite, {0, 1, 32, 48}, origin = {0.5, 1}, frames = 5)
+    MaemiCharacter.idleSprites[.West]  = dm.CreateSprite(maemiSprite, {0, 1, 32, 48}, origin = {0.5, 1}, frames = 5)
     
-    MaemiCharacter.idleSprites[.East].tint  = dm.RED
-    MaemiCharacter.idleSprites[.North].tint = dm.GREEN
-    MaemiCharacter.idleSprites[.West].tint  = dm.BLUE
+    MaemiCharacter.idleSprites[.West].flipX = true
+    // MaemiCharacter.idleSprites[.North].tint = dm.GREEN
+    // MaemiCharacter.idleSprites[.West].tint  = dm.BLUE
 
-    MaemiCharacter.gunSprite = dm.CreateSprite(maemiSprite, {0, 41, 24, 6}, origin = {0.18, 0.5})
-    MaemiCharacter.gunOffset = {-0.2, 0.6}
+    MaemiCharacter.portrait = dm.GetTextureAsset("maemi_portrait.png")
+
+    guns := dm.GetTextureAsset("guns.png")
+    MaemiCharacter.gunSprite = dm.CreateSprite(guns, {0, 0, 32, 16}, origin = {0.3, 0.6})
+    MaemiCharacter.gunOffset = {-0.1, 0.4}
     MaemiCharacter.muzzleOffset = {-0.25, -0.2}
     MaemiCharacter.collisionOffset = {0, 0.5}
     MaemiCharacter.collisionRadius = 0.2
 
     // Player
     LoadLevel(gameState)
-    
-    GameReset(.Menu)
+    GameReset(.Gameplay)
 }
 
 @(export)
@@ -91,7 +95,34 @@ GameUpdate : dm.GameUpdate : proc(state: rawptr) {
 
 @(export)
 GameUpdateDebug : dm.GameUpdateDebug : proc(state: rawptr, debug: bool) {
+    if dm.platform.debugState {
+        dm.DrawBox2D(dm.renderCtx, gameState.player.position, gameState.player.wallCollisionSize, false, dm.RED)
+        dm.DrawCircle(dm.renderCtx, 
+            gameState.player.position + gameState.player.character.collisionOffset,
+            gameState.player.character.collisionRadius,
+            false,
+            dm.GREEN)
+        dm.DrawBox2D(dm.renderCtx, gameState.boss.position, BOSS_COLL_SIZE, false, dm.GREEN)
 
+        for wall in gameState.level.walls {
+            // dm.DrawBox2D(dm.renderCtx, wall.position, wall.size, false)
+            dm.DrawBounds2D(dm.renderCtx, wall.bounds, false)
+        }
+
+        for bullet in gameState.bullets {
+            dm.DrawCircle(dm.renderCtx, bullet.position, bullet.radius, false)
+        }
+
+        if dm.GetKeyState(.R) == .JustPressed {
+            GameReset(.Gameplay)
+        }
+
+        dm.muiBeginWindow(dm.mui, "Cheats", {200, 20, 150, 200}, {})
+
+        dm.muiToggle(dm.mui, "God Mode", &god_mode)
+
+        dm.muiEndWindow(dm.mui)
+    }
 }
 
 @(export)
@@ -103,7 +134,9 @@ GameRender : dm.GameRender : proc(state: rawptr) {
 
     switch gameState.gameStage {
     case .Gameplay: GameplayRender()
-    case .Menu, .Lost, .Won: DrawMenu(&gameState.menu)
+    case .Menu: DrawMenu()
+    case .Lost: DrawGameWon() 
+    case .Won: DrawGameLost()
     }
 
 }
@@ -124,10 +157,12 @@ GameReset :: proc(toStage: GameStage) {
     gameState.boss.isAlive = true
 
     gameState.boss.waitingTimer = PRE_SEQUENCE_WAIT
-    gameState.boss.sequence = cccc
-
+    gameState.boss.currentSeqIdx = 0
+    gameState.boss.sequences = testSeq
 
     gameState.gameStage = toStage
+
+    ResetBossSequence(&gameState.boss)
 
     clear(&gameState.bullets)
 }
@@ -161,10 +196,11 @@ GameplayUpdate :: proc() {
 
                 gameState.boss.hp -= 20
                 if gameState.boss.hp <= 0 {
-                    gameState.boss.isAlive = false
+                    // gameState.boss.isAlive = false
                     clear(&gameState.bullets)
-
-                    gameState.levelEndFadeTimer = END_GAME_FADE_TIME
+                    if BossNextSequence(&gameState.boss) == false {
+                        gameState.levelEndFadeTimer = END_GAME_FADE_TIME
+                    }
 
                     break
                 }
@@ -173,7 +209,8 @@ GameplayUpdate :: proc() {
 
         if bullet.isPlayerBullet == false && 
            gameState.player.noHurtyTimer == 0 &&
-           gameState.playerHP > 0
+           gameState.playerHP > 0 &&
+           god_mode == false
         {
             if dm.CheckCollisionCircles(
                 gameState.player.position + gameState.player.character.collisionOffset, 
@@ -205,28 +242,6 @@ GameplayUpdate :: proc() {
             gameState.gameStage = .Won if gameState.boss.isAlive == false else .Lost
         }
     }
-
-    // DEBUG
-    dm.DrawBox2D(dm.renderCtx, gameState.player.position, gameState.player.wallCollisionSize, false, dm.RED)
-    dm.DrawCircle(dm.renderCtx, 
-        gameState.player.position + gameState.player.character.collisionOffset,
-        gameState.player.character.collisionRadius,
-        false,
-        dm.GREEN)
-    dm.DrawBox2D(dm.renderCtx, gameState.boss.position, BOSS_COLL_SIZE, false, dm.GREEN)
-
-    for wall in gameState.level.walls {
-        // dm.DrawBox2D(dm.renderCtx, wall.position, wall.size, false)
-        dm.DrawBounds2D(dm.renderCtx, wall.bounds, false)
-    }
-
-    for bullet in gameState.bullets {
-        dm.DrawCircle(dm.renderCtx, bullet.position, bullet.radius, false)
-    }
-
-    if dm.GetKeyState(.R) == .JustPressed {
-        GameReset(.Gameplay)
-    }
 }
 
 GameplayRender :: proc() {
@@ -243,11 +258,13 @@ GameplayRender :: proc() {
     if gameState.playerHP > 0 {
         player := &gameState.player
         character := &player.character
-        playerSprite := character.idleSprites[player.heading]
+        playerSprite := &character.idleSprites[player.heading]
 
-        dm.DrawSprite(playerSprite, player.position,
+        dm.AnimateSprite(playerSprite, f32(dm.time.gameTime), 0.12)
+        dm.DrawSprite(playerSprite^, player.position,
             color = {1, 1, 1, dm.CosRange(.5, 1, 10 * gameState.player.noHurtyTimer)},
         )
+
         dm.DrawSprite(character.gunSprite, player.position + character.gunOffset, 
             rotation = player.gunRotation,
         )
@@ -274,10 +291,5 @@ GameplayRender :: proc() {
     {
         alpha := 1 - gameState.levelEndFadeTimer / END_GAME_FADE_TIME
         dm.DrawRectBlank({0, 0}, dm.ToV2(dm.renderCtx.frameSize), origin = {0, 0}, color = {0, 0, 0, alpha})
-
-        if alpha > 1 {
-            // dm.DrawText(dm.renderCtx, "Kappa", font, {10, 10})
-            DrawMenu(&gameState.menu)
-        }
     }
 }

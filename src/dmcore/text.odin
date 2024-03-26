@@ -73,14 +73,16 @@ KerningLookup :: proc(font: Font, a, b: rune) -> f32  {
     return font.kerningTable[key]
 }
 
-DrawTextCentered :: proc(ctx: ^RenderContext, str: string, font: Font, position: v2, fontSize: int = 0) {
+DrawTextCentered :: proc(ctx: ^RenderContext, str: string, font: Font, position: v2, fontSize: int = 0,
+    color := color{1, 1, 1, 1}) {
     size := MeasureText(str, font, fontSize)
     pos := position - size / 2
 
-    DrawText(ctx, str, font, pos, fontSize)
+    DrawText(ctx, str, font, pos, fontSize, color)
 }
 
-DrawText :: proc(ctx: ^RenderContext, str: string, font: Font, position: v2, fontSize: int = 0) {
+DrawText :: proc(ctx: ^RenderContext, str: string, font: Font, position: v2, fontSize: int = 0,
+    color := color{1, 1, 1, 1}) {
 
 
     fontSize := fontSize
@@ -125,7 +127,7 @@ DrawText :: proc(ctx: ^RenderContext, str: string, font: Font, position: v2, fon
         texSize := ToIv2(glyphData.atlasSize * fontAtlasSize)
         src := RectInt{texPos.x, texPos.y, texSize.x, texSize.y}
 
-        DrawRect(ctx, font.atlas, src, dest, shader, v2{0, 0})
+        DrawRect(ctx, font.atlas, src, dest, shader, v2{0, 0}, color)
 
         advance := glyphData.advanceX if glyphData.advanceX != 0 else glyphData.pixelWidth
         posX += f32(advance) * scale

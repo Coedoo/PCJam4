@@ -17,6 +17,7 @@ Character :: struct {
     idleSprites: [Heading]dm.Sprite,
     runSprites: [Heading]dm.Sprite,
 
+    portrait: dm.TexHandle,
 
     gunOffset: v2,
     gunSprite: dm.Sprite,
@@ -94,7 +95,7 @@ ControlPlayer :: proc(player: ^Player) {
         }
     }
 
-    // player.gunSprite.flipY = math.abs(angle) > math.PI / 2
+    player.character.gunSprite.flipY = math.abs(angle) > math.PI / 2
 
     // camera control
     // @NOTE: I'm not sure if I wanted it here

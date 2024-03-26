@@ -34,6 +34,10 @@ GetTextureCtx :: proc(renderCtx: ^RenderContext, handle: TexHandle) -> ^Texture 
 
 GetTextureSize :: proc(handle: TexHandle) -> iv2 {
     info  := GetTextureCtx(renderCtx, handle)
+    if info == nil {
+        return {0, 0}
+    }
+
     return {info.width, info.height}
 }
 
@@ -127,7 +131,13 @@ CreateSprite :: proc {
 //     }
 // }
 
-CreateSpriteFromTextureRect :: proc(texture: TexHandle, rect: RectInt, origin := v2{0.5, 0.5}) -> Sprite {
+CreateSpriteFromTextureRect :: proc(texture: TexHandle, rect: RectInt, 
+    origin := v2{0.5, 0.5},
+    tint := color{1, 1, 1, 1},
+    scale := f32(1),
+    frames := i32(1),
+) -> Sprite
+{
     return {
         texture = texture,
 
@@ -136,9 +146,10 @@ CreateSpriteFromTextureRect :: proc(texture: TexHandle, rect: RectInt, origin :=
 
         origin = origin,
 
-        tint = {1, 1, 1, 1},
+        tint = tint,
 
-        scale = 1,
+        scale = scale,
+        frames = frames,
     }
 }
 

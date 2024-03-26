@@ -139,6 +139,8 @@ DrawBlankSpriteCtx :: proc(ctx: ^RenderContext, position: v2, size: v2, color :=
 }
 
 DrawRect :: proc {
+    DrawRectPos,
+
     DrawRectSrcDst,
     DrawRectSrcDstCtx,
     DrawRectSize,
@@ -172,6 +174,13 @@ DrawRectSrcDstCtx :: proc(ctx: ^RenderContext, texture: TexHandle,
     cmd.shader =  shader
 
     append(&ctx.commandBuffer.commands, cmd)
+}
+
+DrawRectPos :: proc(texture: TexHandle, position: v2,
+    origin := v2{0.25, 0.25}, color: color = WHITE, scale := f32(1))
+{
+    size := GetTextureSize(texture)
+    DrawRectSize(texture, position, ToV2(size) * scale, origin, color)
 }
 
 DrawRectSize :: proc(texture: TexHandle,  position: v2, size: v2, 
