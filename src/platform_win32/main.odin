@@ -199,9 +199,9 @@ main :: proc() {
             case .KEYDOWN: 
                 key := SDLKeyToKey[e.key.keysym.scancode]
 
-                if key == .Esc {
-                    shouldClose = true
-                }
+                // if key == .Esc {
+                //     shouldClose = true
+                // }
 
                 input.curr[key] = .Down
 

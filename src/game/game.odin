@@ -31,8 +31,8 @@ GameState :: struct {
 
     bullets: [dynamic]Bullet,
 
+    levelTimer: f32,
     level: Level,
-
     boss: Boss,
 
     levelEndFadeTimer: f32,
@@ -44,14 +44,14 @@ gameState: ^GameState
 
 @export
 PreGameLoad : dm.PreGameLoad : proc(assets: ^dm.Assets) {
-    dm.RegisterAsset("maemi.png", dm.TextureAssetDescriptor {})
-    dm.RegisterAsset("maemi_portrait.png", dm.TextureAssetDescriptor {})
+    dm.RegisterAsset("maemi.png",          dm.TextureAssetDescriptor{})
+    dm.RegisterAsset("maemi_portrait.png", dm.TextureAssetDescriptor{})
 
-    dm.RegisterAsset("guns.png", dm.TextureAssetDescriptor {})
-    dm.RegisterAsset("bullets.png", dm.TextureAssetDescriptor {})
-    dm.RegisterAsset("tiles.png", dm.TextureAssetDescriptor{})
+    dm.RegisterAsset("guns.png",     dm.TextureAssetDescriptor{})
+    dm.RegisterAsset("bullets.png",  dm.TextureAssetDescriptor{})
+    dm.RegisterAsset("tiles.png",    dm.TextureAssetDescriptor{})
     dm.RegisterAsset("icons_ui.png", dm.TextureAssetDescriptor{})
-    dm.RegisterAsset("level.ldtk", dm.RawFileAssetDescriptor{})
+    dm.RegisterAsset("level.ldtk",   dm.RawFileAssetDescriptor{})
 }
 
 @(export)
@@ -78,7 +78,25 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
     MaemiCharacter.gunOffset = {-0.1, 0.4}
     MaemiCharacter.muzzleOffset = {-0.25, -0.2}
     MaemiCharacter.collisionOffset = {0, 0.5}
-    MaemiCharacter.collisionRadius = 0.2
+    // MaemiCharacter.collisionRadius = 0.2
+
+    // MaemiCharacter.weapon = Shotgun {
+    //     dmg = 10,
+    //     bullet = .Rect,
+    //     bulletSize = 0.15,
+    //     bulletSpeed = 16,
+    //     bulletsCount = 5,
+    //     angleVariation = 20,
+    // }
+
+    MaemiCharacter.weapon = Rifle {
+        dmg = 10,
+        bullet = .Rect,
+        bulletSize = 0.15,
+        bulletSpeed = 16,
+
+        timeBetweenBullets = 0.1,
+    }
 
     bullets := dm.GetTextureAsset("bullets.png")
     gameState.bulletSprites[.Ball]   = dm.CreateSprite(bullets, {16 * 0, 0, 16, 16})
@@ -110,7 +128,7 @@ GameUpdateDebug : dm.GameUpdateDebug : proc(state: rawptr, debug: bool) {
         dm.DrawBox2D(dm.renderCtx, gameState.player.position, gameState.player.wallCollisionSize, false, dm.RED)
         dm.DrawCircle(dm.renderCtx, 
             gameState.player.position + gameState.player.character.collisionOffset,
-            gameState.player.character.collisionRadius,
+            PLAYER_COLL_RADIUS,
             false,
             dm.GREEN)
         dm.DrawBox2D(dm.renderCtx, gameState.boss.position, BOSS_COLL_SIZE, false, dm.GREEN)
@@ -163,13 +181,16 @@ GameReset :: proc(toStage: GameStage) {
     gameState.player.noHurtyTimer = NOHURTY_TIME
 
     // Boss
-    gameState.boss.position = {2, 1}
+    gameState.boss.position = {0, 0}
     gameState.boss.hp = BOSS_HP
     gameState.boss.isAlive = true
 
     gameState.boss.waitingTimer = PRE_SEQUENCE_WAIT
     gameState.boss.currentSeqIdx = 0
+    // gameState.boss.currentSeqIdx = 2
     // gameState.boss.sequences = BossSequence
+
+    gameState.levelTimer = 0
 
     gameState.gameStage = toStage
 
@@ -179,6 +200,8 @@ GameReset :: proc(toStage: GameStage) {
 }
 
 GameplayUpdate :: proc() {
+    gameState.levelTimer += f32(dm.time.deltaTime)
+
     if gameState.playerHP > 0 {
         ControlPlayer(&gameState.player)
 
@@ -225,7 +248,7 @@ GameplayUpdate :: proc() {
         {
             if dm.CheckCollisionCircles(
                 gameState.player.position + gameState.player.character.collisionOffset, 
-                gameState.player.character.collisionRadius, 
+                PLAYER_COLL_RADIUS, 
                 bullet.position, 
                 bullet.radius)
             {
@@ -290,7 +313,7 @@ GameplayRender :: proc() {
     // Bullets
     for &bullet in gameState.bullets {
         sprite := bullet.sprite
-        sprite.scale = bullet.radius * 2
+        sprite.scale = bullet.radius * 2 + 0.2
         dm.DrawSprite(sprite, bullet.position, 
             rotation = bullet.rotation - math.PI / 2)
     }

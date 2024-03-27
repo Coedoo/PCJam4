@@ -10,5 +10,7 @@ PRE_SEQUENCE_WAIT :: 1
 
 END_GAME_FADE_TIME :: 1
 
+PLAYER_COLL_RADIUS :: 0.15
+
 // cheats
-god_mode := false
+god_mode := true

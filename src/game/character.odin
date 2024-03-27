@@ -20,17 +20,19 @@ Character :: struct {
 
     portrait: dm.TexHandle,
 
+    weapon: WeaponVariant,
+
     gunOffset: v2,
     gunSprite: dm.Sprite,
     muzzleOffset: v2,
 
-    collisionRadius: f32,
+    // collisionRadius: f32,
     collisionOffset: v2,
 }
 
 Player :: struct {
     position: v2,
-    heading: Heading, 
+    heading: Heading,
     gunRotation: f32,
 
     noHurtyTimer: f32,
@@ -89,13 +91,8 @@ ControlPlayer :: proc(player: ^Player) {
 
     // shooting
     muzzlePos := gunPos + glsl.normalize(aimDelta) + player.character.muzzleOffset
-    if dm.GetMouseButton(.Left) == .JustPressed {
-        for i in 0..<3 {
-            variation := rand.float32() * 0.2 - 0.1
-            SpawnBullet(muzzlePos, angle + variation, gameState.bulletSprites[.Rect], true)
-        }
-    }
-
+    ControlWeapon(&player.character.weapon, muzzlePos, angle)
+    
     player.character.gunSprite.flipY = math.abs(angle) > math.PI / 2
 
     // camera control
@@ -121,6 +118,36 @@ ControlPlayer :: proc(player: ^Player) {
 }
 
 //////////////////
+
+// RepeatType :: enum {
+//     Auto, Click,
+// }
+
+Weapon :: struct {
+    dmg: int,
+    // repeat: RepeatType,
+    bullet: BulletType,
+    bulletSize: f32,
+    bulletSpeed: f32,
+}
+
+Shotgun :: struct {
+    using weapon: Weapon,
+
+    bulletsCount: int,
+    angleVariation: f32,
+}
+
+Rifle :: struct {
+    using weapon: Weapon,
+
+    timeBetweenBullets:f32,
+    timer:f32,
+}
+
+WeaponVariant :: union {
+    Shotgun, Rifle,
+}
 
 BulletType :: enum {
     Ball,
@@ -160,7 +187,7 @@ SpawnBullet :: proc(
     rotation: f32,
     sprite: dm.Sprite,
     isPlayerBullet: bool,
-    radius := f32(0.1),
+    radius := f32(0.2),
     speed := f32(10),
     angleChange := f32(0),
 )
@@ -180,4 +207,43 @@ SpawnBullet :: proc(
     }
 
     append(&gameState.bullets, bullet)
+}
+
+ControlWeapon :: proc(weapon: ^WeaponVariant, muzzlePos: v2, aimAngle: f32) {
+    switch &w in weapon {
+        case Shotgun:
+        if dm.GetMouseButton(.Left) == .JustPressed {
+            for i in 0..<w.bulletsCount {
+                variation := rand.float32() * w.angleVariation - (w.angleVariation / 2)
+                SpawnBullet(
+                    muzzlePos, 
+                    aimAngle + math.to_radians(variation),
+                    gameState.bulletSprites[w.bullet], 
+                    true, 
+                    radius = w.bulletSize,
+                    speed = w.bulletSpeed
+                )
+            }
+        }
+
+        case Rifle:
+        w.timer -= f32(dm.time.deltaTime)
+
+        if dm.GetMouseButton(.Left) == .Down {
+            if w.timer > 0 {
+                return
+            }
+
+            w.timer = w.timeBetweenBullets
+
+            SpawnBullet(
+                muzzlePos, 
+                aimAngle,
+                gameState.bulletSprites[w.bullet], 
+                true, 
+                radius = w.bulletSize,
+                speed = w.bulletSpeed
+            )
+        }
+    }
 }

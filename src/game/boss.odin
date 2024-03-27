@@ -35,7 +35,7 @@ Sequence :: struct {
     stepIndex: int,
     steps: []SequenceStep,
 
-    stopPredicate: SequenceStopPredicate,
+    stop: SequenceStopPredicate,
 }
 
 /////
@@ -45,6 +45,7 @@ SequenceStep :: union {
     FireCircle,
     Sequence,
     MoveTo,
+    FireBullet,
 }
 
 WaitSeconds :: struct {
@@ -59,6 +60,18 @@ FireCircle :: struct {
 
     bullet: BulletType,
     speed: f32,
+}
+
+FireTarget :: enum {
+    Angle,
+    Player,
+}
+
+FireBullet :: struct {
+    // count: int,
+    bullet: BulletType,
+    speed: f32,
+    target: FireTarget,
 }
 
 MoveTo :: struct {
@@ -91,57 +104,109 @@ BossSequence := []Sequence{
     // Phase 1
     Sequence{
         steps = {
+            MoveTo{to = {0, 3}, time = 1},
+
             Sequence {
-                stopPredicate = AfterIter{6},
                 steps = {
-                    FireCircle{10, 1, 0, 2, .Manta, 5},
-                    WaitSeconds{0.1}
+                    Sequence {
+                        stop = AfterIter{20},
+                        steps = {
+                            FireBullet {
+                                .Pointy,
+                                8,
+                                .Player
+                            },
+                            WaitSeconds{0.1}
+                        }
+                    },
+                    WaitSeconds{0.5}
                 },
             },
-
-            WaitSeconds{1},
-            
-            Sequence {
-                stopPredicate = AfterIter{6},
-                steps = {
-                    FireCircle{10, 1, 0, -2, .Manta, 5},
-                    WaitSeconds{0.1}
-                }
-            },
-
-            WaitSeconds{1},
         }
     },
 
     // Phase 2
     Sequence{
-        type = .Parallel,
         steps = {
-            Sequence {
-                stopPredicate = AfterIter{6},
-                steps = {
-                    FireCircle{10, 1, 0, 2, .Pointy, 6},
-                    WaitSeconds{0.1}
-                },
-            },
+            MoveTo{to={0, 0}, time=0.5},
 
             Sequence {
-                stopPredicate = AfterIter{6},
+                type = .Parallel,
                 steps = {
-                    FireCircle{10, 1, 0, -2, .Pointy, 6},
-                    WaitSeconds{0.1}
-                }
-            },
+                    Sequence {
+                        stop = AfterIter{6},
+                        steps = {
+                            FireCircle{10, 1, 0, 4, .Manta, 6},
+                            WaitSeconds{0.3}
+                        },
+                    },
 
-            Sequence {
-                steps = {
-                    MoveTo{to = {5, 5}, time = 1},
-                    WaitSeconds{2},
-                    MoveTo{to = {-5, 3}, time = 1},
-                    WaitSeconds{2},
+                    Sequence {
+                        stop = AfterIter{6},
+                        steps = {
+                            FireCircle{10, 1, 0, -4, .Manta, 6},
+                            WaitSeconds{0.3}
+                        }
+                    },
                 }
             }
+        }
+    },
 
+    // Phase 3
+    Sequence{
+        steps = {
+            MoveTo{to={0, 4}, time=0.5},
+
+            Sequence {
+                type = .Serial,
+                steps = {
+                    MoveTo{to={6, 4.5}, time=0.5},
+                    FireCircle{16, 1, 0, 0, .Ball, 3},
+
+                    Sequence {
+                        stop = AfterIter{10},
+                        steps = {
+                            FireBullet { .Pointy, 8, .Player},
+                            WaitSeconds{0.05}
+                        },
+                    },
+
+                    MoveTo{to={0, 4.5}, time=0.5},
+                    FireCircle{16, 1, 0, 0, .Ball, 3},
+
+                    Sequence {
+                        stop = AfterIter{10},
+                        steps = {
+                            FireBullet { .Pointy, 8, .Player},
+                            WaitSeconds{0.05}
+                        },
+                    },
+
+                    MoveTo{to={-6, 4.5}, time=0.5},
+                    FireCircle{16, 1, 0, 0, .Ball, 3},
+
+                    Sequence {
+                        stop = AfterIter{10},
+                        steps = {
+                            FireBullet { .Pointy, 8, .Player},
+                            WaitSeconds{0.05}
+                        },
+                    },
+
+                    MoveTo{to={0, 4.5}, time=0.5},
+                    FireCircle{16, 1, 0, 0, .Ball, 3},
+
+                    Sequence {
+                        stop = AfterIter{10},
+                        steps = {
+                            FireBullet { .Pointy, 8, .Player},
+                            WaitSeconds{0.05}
+                        },
+                    },
+
+                }
+            }
         }
     }
 }
@@ -222,7 +287,7 @@ RunSequence :: proc(boss: ^Boss, sequence: ^Sequence) -> bool {
 
     sequence.sequenceT += f32(dm.time.deltaTime)
 
-    switch p in sequence.stopPredicate {
+    switch p in sequence.stop {
     case Never: 
         return false
     case AfterIter:
@@ -255,6 +320,8 @@ ResetStep :: proc(step: ^SequenceStep, boss: ^Boss) {
 
     case Sequence:
         ResteSequence(&s, boss)
+
+    case FireBullet:
     }
 }
 
@@ -280,6 +347,17 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
         }
 
         return true
+
+    case FireBullet:
+        delta := gameState.player.position - boss.position
+        angle := math.atan2(delta.y, delta.x)
+
+        SpawnBullet(boss.position, 
+            angle,
+            gameState.bulletSprites[s.bullet],
+            false,
+            speed = s.speed,
+        )
     
     case Sequence:
         return RunSequence(boss, &s)
