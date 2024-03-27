@@ -5,6 +5,8 @@ import "core:math"
 import "core:math/rand"
 import "core:math/linalg/glsl"
 import "core:fmt"
+import "core:slice"
+
 import "../ldtk"
 
 v2 :: dm.v2
@@ -34,6 +36,8 @@ GameState :: struct {
     boss: Boss,
 
     levelEndFadeTimer: f32,
+
+    bulletSprites: [BulletType]dm.Sprite,
 }
 
 gameState: ^GameState
@@ -44,6 +48,7 @@ PreGameLoad : dm.PreGameLoad : proc(assets: ^dm.Assets) {
     dm.RegisterAsset("maemi_portrait.png", dm.TextureAssetDescriptor {})
 
     dm.RegisterAsset("guns.png", dm.TextureAssetDescriptor {})
+    dm.RegisterAsset("bullets.png", dm.TextureAssetDescriptor {})
     dm.RegisterAsset("tiles.png", dm.TextureAssetDescriptor{})
     dm.RegisterAsset("icons_ui.png", dm.TextureAssetDescriptor{})
     dm.RegisterAsset("level.ldtk", dm.RawFileAssetDescriptor{})
@@ -75,6 +80,12 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
     MaemiCharacter.collisionOffset = {0, 0.5}
     MaemiCharacter.collisionRadius = 0.2
 
+    bullets := dm.GetTextureAsset("bullets.png")
+    gameState.bulletSprites[.Ball]   = dm.CreateSprite(bullets, {16 * 0, 0, 16, 16})
+    gameState.bulletSprites[.Rect]   = dm.CreateSprite(bullets, {16 * 1, 0, 16, 16})
+    gameState.bulletSprites[.Manta]  = dm.CreateSprite(bullets, {16 * 2, 0, 16, 16})
+    gameState.bulletSprites[.Pointy] = dm.CreateSprite(bullets, {16 * 3, 0, 16, 16})
+
     // Player
     LoadLevel(gameState)
     GameReset(.Gameplay)
@@ -82,7 +93,7 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
 
 @(export)
 GameUpdate : dm.GameUpdate : proc(state: rawptr) {
-    gameState := transmute(^GameState) state
+    gameState = cast(^GameState) state
 
     switch gameState.gameStage {
     case .Menu:     UpdateMenu(&gameState.menu)
@@ -158,13 +169,13 @@ GameReset :: proc(toStage: GameStage) {
 
     gameState.boss.waitingTimer = PRE_SEQUENCE_WAIT
     gameState.boss.currentSeqIdx = 0
-    gameState.boss.sequences = testSeq
+    // gameState.boss.sequences = BossSequence
 
     gameState.gameStage = toStage
 
-    ResetBossSequence(&gameState.boss)
-
     clear(&gameState.bullets)
+
+    ResetBossSequence(&gameState.boss)
 }
 
 GameplayUpdate :: proc() {
@@ -278,9 +289,10 @@ GameplayRender :: proc() {
 
     // Bullets
     for &bullet in gameState.bullets {
-        dm.DrawSprite(bullet.sprite, bullet.position, 
-            rotation = bullet.rotation, 
-            color = dm.BLUE if bullet.isPlayerBullet else dm.RED)
+        sprite := bullet.sprite
+        sprite.scale = bullet.radius * 2
+        dm.DrawSprite(sprite, bullet.position, 
+            rotation = bullet.rotation - math.PI / 2)
     }
 
     // UI

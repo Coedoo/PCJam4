@@ -20,7 +20,7 @@ DrawGameUI :: proc() {
     bossHPBarSize := v2{frameSize.x * gameState.boss.hp / BOSS_HP, 20}
     hpBarPos := v2{0, f32(dm.renderCtx.frameSize.y) - bossHPBarSize.y}
 
-    phasesLeft := len(gameState.boss.sequences) - gameState.boss.currentSeqIdx
+    phasesLeft := len(BossSequence) - gameState.boss.currentSeqIdx
     for i in 0..<phasesLeft {
         pos := hpBarPos + {f32(i) * 21, -21}
         dm.DrawRectBlank(pos, {20, 20}, origin = {0, 0}, color = dm.RED)

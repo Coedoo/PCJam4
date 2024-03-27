@@ -24,7 +24,7 @@ UpdateStatePointer : UpdateStatePointerFunc : proc(platformPtr: ^Platform) {
 
     fmt.println("Setting state pointers")
 
-    for k, v in assets.assetsMap {
-        fmt.println(k, v)
-    }
+    // for k, v in assets.assetsMap {
+    //     fmt.println(k, v)
+    // }
 }

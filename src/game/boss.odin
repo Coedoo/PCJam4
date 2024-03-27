@@ -2,6 +2,7 @@ package game
 
 import dm "../dmcore"
 import "core:math"
+import "core:slice"
 
 import "core:fmt"
 
@@ -14,7 +15,7 @@ Boss :: struct {
     waitingTimer: f32,
 
     currentSeqIdx: int,
-    sequences: []Sequence,
+    // sequences: []Sequence,
 }
 
 //////////////////
@@ -55,6 +56,9 @@ FireCircle :: struct {
     radius: f32,
     spawnOffset: v2,
     iterAngle: f32,
+
+    bullet: BulletType,
+    speed: f32,
 }
 
 MoveTo :: struct {
@@ -83,70 +87,66 @@ Never :: struct {}
 
 ////
 
-aaaa := Sequence{
-    steps = {
-        FireCircle{10, 1, 0, 10},
-        WaitSeconds{0.2}
-    }
-}
-
-bbbb := Sequence{
-    steps = {
-        Sequence {
-            stopPredicate = AfterIter{6},
-            steps = {
-                FireCircle{10, 1, 0, 2},
-                WaitSeconds{0.1}
+BossSequence := []Sequence{
+    // Phase 1
+    Sequence{
+        steps = {
+            Sequence {
+                stopPredicate = AfterIter{6},
+                steps = {
+                    FireCircle{10, 1, 0, 2, .Manta, 5},
+                    WaitSeconds{0.1}
+                },
             },
-        },
 
-        WaitSeconds{1},
-        
-        Sequence {
-            stopPredicate = AfterIter{6},
-            steps = {
-                FireCircle{10, 1, 0, -2},
-                WaitSeconds{0.1}
-            }
-        },
-
-        WaitSeconds{1},
-    }
-}
-
-cccc := Sequence{
-    type = .Parallel,
-    steps = {
-        Sequence {
-            stopPredicate = AfterIter{6},
-            steps = {
-                FireCircle{10, 1, 0, 2},
-                WaitSeconds{0.1}
+            WaitSeconds{1},
+            
+            Sequence {
+                stopPredicate = AfterIter{6},
+                steps = {
+                    FireCircle{10, 1, 0, -2, .Manta, 5},
+                    WaitSeconds{0.1}
+                }
             },
-        },
 
-        Sequence {
-            stopPredicate = AfterIter{6},
-            steps = {
-                FireCircle{10, 1, 0, -2},
-                WaitSeconds{0.1}
-            }
-        },
-
-        Sequence {
-            steps = {
-                MoveTo{to = {5, 5}, time = 1},
-                WaitSeconds{2},
-                MoveTo{to = {-5, 3}, time = 1},
-                WaitSeconds{2},
-            }
+            WaitSeconds{1},
         }
+    },
 
+    // Phase 2
+    Sequence{
+        type = .Parallel,
+        steps = {
+            Sequence {
+                stopPredicate = AfterIter{6},
+                steps = {
+                    FireCircle{10, 1, 0, 2, .Pointy, 6},
+                    WaitSeconds{0.1}
+                },
+            },
+
+            Sequence {
+                stopPredicate = AfterIter{6},
+                steps = {
+                    FireCircle{10, 1, 0, -2, .Pointy, 6},
+                    WaitSeconds{0.1}
+                }
+            },
+
+            Sequence {
+                steps = {
+                    MoveTo{to = {5, 5}, time = 1},
+                    WaitSeconds{2},
+                    MoveTo{to = {-5, 3}, time = 1},
+                    WaitSeconds{2},
+                }
+            }
+
+        }
     }
 }
 
-// testSeq := []Sequence{aaaa, bbbb, cccc}
-testSeq := []Sequence{bbbb, cccc}
+/////////
 
 UpdateBoss :: proc(boss: ^Boss) {
     if boss.waitingTimer > 0 {
@@ -154,20 +154,20 @@ UpdateBoss :: proc(boss: ^Boss) {
         return
     }
 
-    seq := &boss.sequences[boss.currentSeqIdx]
+    seq := &BossSequence[boss.currentSeqIdx]
     RunSequence(boss, seq)
 }
 
 ResetBossSequence :: proc(boss: ^Boss) {
     boss.waitingTimer = PRE_SEQUENCE_WAIT
 
-    seq := &boss.sequences[boss.currentSeqIdx]
+    seq := &BossSequence[boss.currentSeqIdx]
     ResteSequence(seq, boss)
 }
 
 BossNextSequence :: proc(boss: ^Boss) -> bool {
     boss.currentSeqIdx += 1
-    if boss.currentSeqIdx >= len(boss.sequences) {
+    if boss.currentSeqIdx >= len(BossSequence) {
         boss.isAlive = false
         return false
     }
@@ -271,7 +271,12 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
         pos := boss.position + s.spawnOffset
         for i in 0..<s.count {
             rot := f32(i) / f32(s.count - 1) * 360 + s.iterAngle * f32(iteration)
-            SpawnBullet(boss.position + RotOffset(rot, s.radius) + s.spawnOffset, math.to_radians(rot), false)
+            SpawnBullet(boss.position + RotOffset(rot, s.radius) + s.spawnOffset, 
+                        math.to_radians(rot),
+                        gameState.bulletSprites[s.bullet],
+                        false,
+                        speed = s.speed,
+                    )
         }
 
         return true

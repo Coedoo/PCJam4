@@ -14,6 +14,7 @@ Heading :: enum {
 }
 
 Character :: struct {
+
     idleSprites: [Heading]dm.Sprite,
     runSprites: [Heading]dm.Sprite,
 
@@ -89,9 +90,9 @@ ControlPlayer :: proc(player: ^Player) {
     // shooting
     muzzlePos := gunPos + glsl.normalize(aimDelta) + player.character.muzzleOffset
     if dm.GetMouseButton(.Left) == .JustPressed {
-        for i in 0..=5 {
+        for i in 0..<3 {
             variation := rand.float32() * 0.2 - 0.1
-            SpawnBullet(muzzlePos, angle + variation, true)
+            SpawnBullet(muzzlePos, angle + variation, gameState.bulletSprites[.Rect], true)
         }
     }
 
@@ -121,19 +122,23 @@ ControlPlayer :: proc(player: ^Player) {
 
 //////////////////
 
+BulletType :: enum {
+    Ball,
+    Rect,
+    Manta,
+    Pointy,
+}
+
 Bullet :: struct {
-    startPosition: v2,
-    startRotation: f32,
     spawnTime: f32,
 
     position: v2,
     rotation: f32,
-
-    sprite: dm.Sprite,
-
+    speed: f32,
+    angleChange: f32,
     radius: f32,
 
-    speed: f32,
+    sprite: dm.Sprite,
 
     isPlayerBullet: bool,
 }
@@ -141,31 +146,38 @@ Bullet :: struct {
 MaemiCharacter: Character
 
 UpdateBullet :: proc(bullet: ^Bullet) {
-    bullet.rotation = bullet.startRotation
+    bullet.rotation += bullet.angleChange * f32(dm.time.deltaTime)
     direction := v2{
         math.cos(bullet.rotation),
         math.sin(bullet.rotation),
     }
 
-    lifeTime := f32(dm.time.gameTime) - bullet.spawnTime
-    bullet.position = bullet.startPosition + direction * bullet.speed * lifeTime
+    bullet.position += direction * bullet.speed * f32(dm.time.deltaTime)
 }
 
-SpawnBullet :: proc(position: v2, rotation: f32, isPlayerBullet: bool) {
+SpawnBullet :: proc(
+    position: v2, 
+    rotation: f32,
+    sprite: dm.Sprite,
+    isPlayerBullet: bool,
+    radius := f32(0.1),
+    speed := f32(10),
+    angleChange := f32(0),
+)
+{
     bullet := Bullet{
-        startPosition = position,
-        startRotation = rotation,
+        position = position,
+        rotation = rotation,
+        angleChange = angleChange,
         spawnTime = f32(dm.time.gameTime),
 
-        sprite = dm.CreateSprite(dm.renderCtx.whiteTexture, {0, 0, 1, 1}),
+        sprite = sprite,
 
-        radius = 0.2,
-        speed = 10,
+        radius = radius,
+        speed = speed,
 
         isPlayerBullet = isPlayerBullet
     }
-
-    bullet.sprite.scale = 0.2
 
     append(&gameState.bullets, bullet)
 }
