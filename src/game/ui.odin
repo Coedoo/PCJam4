@@ -48,10 +48,8 @@ DrawGameUI :: proc() {
 
 MenuState :: enum {
     Main,
-    Controls,
     Credits,
-
-    CharacterSelect,
+    Controls,
 }
 
 Menu :: struct {
@@ -78,23 +76,28 @@ UpdateMenu:: proc(menu: ^Menu) {
     switch menu.state {
     case .Main:
         if MenuButton(menu, "Start") {
-            SwitchMenuState(menu, .CharacterSelect)
+            // SwitchMenuState(menu, .CharacterSelect)
             // gameState.gameStage = .Gameplay
-            // GameReset(.Gameplay)
+            GameReset(.Gameplay)
         }
-        if MenuButton(menu, "Controls") {
-            SwitchMenuState(menu, .Controls)
-        }
+        // if MenuButton(menu, "Controls") {
+        //     SwitchMenuState(menu, .Controls)
+        // }
         if MenuButton(menu, "Credits") {
             SwitchMenuState(menu, .Credits)
         }
 
-    case .Controls:
-    case .Credits:
-    case .CharacterSelect:
-        if MenuButton(menu, "Start") {
-            GameReset(.Gameplay)
+        if MenuButton(menu, "Controls") {
+            SwitchMenuState(menu, .Controls)
         }
+
+    case .Credits:
+    case .Controls:
+    // case .Controls:
+    // case .CharacterSelect:
+    //     if MenuButton(menu, "Start") {
+    //         GameReset(.Gameplay)
+    //     }
     }
 
     if menu.state != .Main {
@@ -104,9 +107,12 @@ UpdateMenu:: proc(menu: ^Menu) {
     }
 
     move := dm.GetAxisInt(.W, .S, .JustPressed)
+    if move == 0 {
+        move = dm.GetAxisInt(.Up, .Down, .JustPressed)
+    }
 
     menu.hotButton += int(move)
-    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons))
+    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons) - 1)
 }
 
 DrawMenu :: proc() {
@@ -114,23 +120,76 @@ DrawMenu :: proc() {
 
     switch gameState.menu.state {
     case .Main:
-        DrawMenuButtons(&gameState.menu, {400, 370})
-    case .Controls:
-        DrawMenuButtons(&gameState.menu, {400, 370})
-    case .Credits:
-        DrawMenuButtons(&gameState.menu, {400, 370})
+        dm.DrawTextCentered(dm.renderCtx,
+            "Tenma",
+            font,
+            {500, 100},
+            80
+        )
 
-    case .CharacterSelect:
+        dm.DrawTextCentered(dm.renderCtx,
+            "VS",
+            font,
+            {560, 180},
+            80
+        )
+
+        dm.DrawTextCentered(dm.renderCtx,
+            "Sakana",
+            font,
+            {620, 260},
+            80
+        )
+
         dm.DrawRectPos(gameState.player.character.portrait, {210, 300})
+        DrawMenuButtons(&gameState.menu, {560, 390})
+    // case .Controls:
+    //     DrawMenuButtons(&gameState.menu, {400, 370})
+    case .Credits:
+        dm.DrawTextCentered(dm.renderCtx,
+            "Character art: Kairo (@kairo0_)\nMusic: FettuccineBroccoli\nStuff: Coedo",
+            font,
+            {400, 260},
+            45
+        )
 
-        dm.DrawTextCentered(dm.renderCtx, "Choose your character!", font,
-            {400, 40}, 60, dm.BLACK)
+        DrawMenuButtons(&gameState.menu, {400, 500})
 
-        dm.DrawTextCentered(dm.renderCtx, "Tenma Maemi", font,
-            {550, 200}, 50)
+    // case .CharacterSelect:
+    //     dm.DrawRectPos(gameState.player.character.portrait, {210, 300})
 
-        DrawMenuButtons(&gameState.menu, {400, 520})
+    //     dm.DrawTextCentered(dm.renderCtx, "Choose your character!", font,
+    //         {400, 40}, 60, dm.BLACK)
+
+    //     dm.DrawTextCentered(dm.renderCtx, "Tenma Maemi", font,
+    //         {550, 200}, 50)
+
+    //     DrawMenuButtons(&gameState.menu, {400, 520})
+    case .Controls:
+        dm.DrawTextCentered(dm.renderCtx,
+            "WSAD - movement\nLeft mouse btn - Shoot\nRight mouse btn - slow move mode",
+            font,
+            {400, 260},
+            45
+        )
+        DrawMenuButtons(&gameState.menu, {400, 500})
     }
+
+    dm.DrawTextCentered(
+        dm.renderCtx,
+        "W, S or Arrows - Select. Enter - accept.",
+        font,
+        {400, 600 - 20},
+        20
+    )
+
+    dm.DrawTextCentered(
+        dm.renderCtx,
+        "Made with #NoEngine",
+        font,
+        {720, 600 - 16},
+        16
+    )
 }
 
 DrawMenuButtons :: proc(menu: ^Menu, pos: v2) {
@@ -142,7 +201,7 @@ DrawMenuButtons :: proc(menu: ^Menu, pos: v2) {
             size += {10, -12}
 
             dm.DrawRectBlank({0, f32(i) * font.lineHeight} + pos + {0, 3}, size, 
-                color = {0, 0, 0, 0.5},
+                color = {1, 1, 1, 0.5},
                 origin = {0.25, 0.25} // WHY?!?!
             )
         }
@@ -156,8 +215,6 @@ DrawMenuButtons :: proc(menu: ^Menu, pos: v2) {
 UpdateGameLost :: proc(menu: ^Menu) {
     clear(&menu.buttons)
 
-    if MenuButton(menu, "Lost") {
-    }
     if MenuButton(menu, "Restart") {
         GameReset(.Gameplay)
     }
@@ -167,16 +224,17 @@ UpdateGameLost :: proc(menu: ^Menu) {
     }
 
     move := dm.GetAxisInt(.W, .S, .JustPressed)
+    if move == 0 {
+        move = dm.GetAxisInt(.Up, .Down, .JustPressed)
+    }
 
     menu.hotButton += int(move)
-    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons))
+    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons) - 1)
 }
 
 UpdateGameWon :: proc(menu: ^Menu) {
     clear(&menu.buttons)
 
-    if MenuButton(menu, "WON") {
-    }
     if MenuButton(menu, "Restart") {
         GameReset(.Gameplay)
     }
@@ -186,16 +244,52 @@ UpdateGameWon :: proc(menu: ^Menu) {
     }
 
     move := dm.GetAxisInt(.W, .S, .JustPressed)
+    if move == 0 {
+        move = dm.GetAxisInt(.Up, .Down, .JustPressed)
+    }
 
     menu.hotButton += int(move)
-    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons))
+    menu.hotButton = clamp(menu.hotButton, 0, len(menu.buttons) - 1)
 }
 
 
 DrawGameWon :: proc() {
-    DrawMenuButtons(&gameState.menu, {400, 520})
+    dm.DrawTextCentered(
+        dm.renderCtx,
+        fmt.tprintf("Time: %.2f", gameState.levelTimer),
+        dm.LoadDefaultFont(dm.renderCtx),
+        {400, 120},
+        40
+    )
+
+    dm.DrawRect(gameState.pleadTexture, {400, 300})
+    DrawMenuButtons(&gameState.menu, {400, 400})
+
+    dm.DrawTextCentered(
+        dm.renderCtx,
+        "W, S or Arrows - Select. Enter - accept.",
+        dm.LoadDefaultFont(dm.renderCtx),
+        {400, 600 - 20},
+        20
+    )
 }
 
 DrawGameLost :: proc() {
-    DrawMenuButtons(&gameState.menu, {400, 520})
-}
+    dm.DrawTextCentered(
+        dm.renderCtx,
+        "You lost to Sakana!",
+        dm.LoadDefaultFont(dm.renderCtx),
+        {400, 120},
+        40
+    )
+    
+    dm.DrawRect(gameState.kekTexture, {400, 220})
+    DrawMenuButtons(&gameState.menu, {400, 370})
+
+    dm.DrawTextCentered(
+        dm.renderCtx,
+        "W, S or Arrows - Select. Enter - accept.",
+        dm.LoadDefaultFont(dm.renderCtx),
+        {400, 600 - 20},
+        20
+    )}

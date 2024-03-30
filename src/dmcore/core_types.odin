@@ -85,6 +85,11 @@ Ray2DFromTwoPoints :: proc(a, b: v2) -> Ray2D {
     }
 }
 
+IsInBounds :: proc(bounds: Bounds2D, point: v2) -> bool {
+    return point.x > bounds.left && point.x < bounds.right &&
+           point.y > bounds.bot && point.y < bounds.top
+}
+
 ///////////
 
 TimeData :: struct {

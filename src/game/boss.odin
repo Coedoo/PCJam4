@@ -118,7 +118,7 @@ Never :: struct {}
 BossSequence := []Phase{
     // Phase 1
     {
-        hp = 400,
+        hp = 600,
         sequence = {
             steps = {
                 MoveTo{to = {0, 3}, time = 1},
@@ -152,7 +152,7 @@ BossSequence := []Phase{
 
     // Phase 2
     {
-        hp = 1000,
+        hp = 700,
         sequence = {
             steps = {
                 MoveTo{to={0, 0}, time=0.5},
@@ -183,7 +183,7 @@ BossSequence := []Phase{
 
     // Phase 3
     {
-        hp = 1000,
+        hp = 800,
         sequence = {
             steps = {
                 MoveTo{to={0, 4}, time=0.5},
@@ -455,7 +455,8 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
         return true
 
     case FireBullet:
-        delta := gameState.player.position - boss.position
+
+        delta := PlayerPos() - boss.position
         angle := math.atan2(delta.y, delta.x)
 
         SpawnBullet(boss.position, 
@@ -465,7 +466,7 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
             speed = s.speed,
         )
     case FireShotgun:
-        delta := gameState.player.position - boss.position
+        delta := PlayerPos() - boss.position
         angle := math.atan2(delta.y, delta.x)
 
         angleStep := s.arcAngle / f32(s.count)

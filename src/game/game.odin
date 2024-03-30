@@ -50,20 +50,30 @@ GameState :: struct {
     // audio
     // menuMusic: dm.SoundHandle,
     gameMusic: dm.SoundHandle,
+    // shotgun: dm.SoundHandle,
+    hitSound: dm.SoundHandle,
+
+    ///
+    kekTexture: dm.TexHandle,
+    pleadTexture: dm.TexHandle,
 }
 
 ///////
-MaemiAsset := #load("../../assets/maemi.png")
-MaemiPortraitAsset := #load("../../assets/maemi_portrait.png")
-FismanAsset := #load("../../assets/Fishman.png")
-GunsAsset := #load("../../assets/guns.png")
-BulletsAsset := #load("../../assets/bullets.png")
-TilesAsset := #load("../../assets/tiles.png")
-IconsAsset := #load("../../assets/icons_ui.png")
-LevelAsset := #load("../../assets/level.ldtk")
+MaemiAsset :: #load("../../assets/maemi.png")
+MaemiPortraitAsset :: #load("../../assets/maemi_portrait.png")
+FismanAsset :: #load("../../assets/Fishman.png")
+GunsAsset :: #load("../../assets/guns.png")
+BulletsAsset :: #load("../../assets/bullets.png")
+TilesAsset :: #load("../../assets/tiles.png")
+IconsAsset :: #load("../../assets/icons_ui.png")
+LevelAsset :: #load("../../assets/level.ldtk")
 
-ShotgunAsset := #load("../../assets/shotgun.mp3")
-GameMusicAsset := #load("../../assets/Attempt_2.mp3")
+KekAsset :: #load("../../assets/theoKek.png")
+PleadAsset :: #load("../../assets/plead.png")
+
+// ShotgunAsset := #load("../../assets/shotgun.mp3")
+GameMusicAsset :: #load("../../assets/Attempt_2.mp3")
+HitSoundAsset :: #load("../../assets/hit.wav")
 //////
 
 gameState: ^GameState
@@ -127,7 +137,7 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
     // }
 
     MaemiCharacter.weapon = Rifle {
-        dmg = 5,
+        dmg = 8,
         bullet = .Rect,
         bulletSize = 0.15,
         bulletSpeed = 25,
@@ -167,13 +177,24 @@ GameLoad : dm.GameLoad : proc(platform: ^dm.Platform) {
     gameState.icons = dm.LoadTextureFromMemory(IconsAsset)
 
     gameState.arrowSprite = dm.CreateSprite(gameState.icons, {16, 0, 16, 16})
+    gameState.arrowSprite.origin = {.5, 0}
 
     gameState.gameMusic = dm.LoadSoundFromMemory(GameMusicAsset)
     dm.SetLooping(gameState.gameMusic, true)
     dm.SetVolume(gameState.gameMusic, 0.5)
 
+    gameState.hitSound = dm.LoadSoundFromMemory(HitSoundAsset)
+    dm.SetVolume(gameState.hitSound, 0.2)
+
+    // gameState.shotgun = dm.LoadSoundFromMemory(ShotgunAsset)
+    // dm.SetLooping(gameState.gameMusic, true)
+    // dm.SetVolume(gameState.shotgun, 0.5)
+
+    gameState.kekTexture = dm.LoadTextureFromMemory(KekAsset)
+    gameState.pleadTexture = dm.LoadTextureFromMemory(PleadAsset)
+
     LoadLevel(gameState)
-    GameReset(.Gameplay)
+    GameReset(.Menu)
 }
 
 @(export)
@@ -228,13 +249,13 @@ GameRender : dm.GameRender : proc(state: rawptr) {
     gameState = cast(^GameState) state
 
     dm.SetCamera(gameState.camera)
-    dm.ClearColor({0.1, 0.2, 0.4, 1})
+    dm.ClearColor(BACK_COLOR)
 
     switch gameState.gameStage {
     case .Gameplay: GameplayRender()
     case .Menu: DrawMenu()
-    case .Lost: DrawGameWon()
-    case .Won: DrawGameLost()
+    case .Won: DrawGameWon()
+    case .Lost: DrawGameLost()
     }
 }
 
@@ -242,7 +263,7 @@ GameRender : dm.GameRender : proc(state: rawptr) {
 /////////////////
 
 GameReset :: proc(toStage: GameStage) {
-    gameState.playerHP = 3
+    gameState.playerHP = PLAYER_HP
     gameState.player.position = {0, -5}
     // gameState.player.character = MaemiCharacter
     gameState.player.wallCollisionSize = {1, 0.2}
@@ -316,6 +337,9 @@ GameplayUpdate :: proc() {
 
                 dmg := GetDMG(gameState.player.character.weapon)
                 gameState.boss.hp -= f32(dmg)
+
+                dm.PlaySound(gameState.hitSound)
+
                 if gameState.boss.hp <= 0 {
                     if BossNextSequence(&gameState.boss) == false {
                         gameState.levelEndFadeTimer = END_GAME_FADE_TIME
@@ -362,7 +386,12 @@ GameplayUpdate :: proc() {
     {
         gameState.levelEndFadeTimer -= f32(dm.time.deltaTime)
         if gameState.levelEndFadeTimer <= 0 {
-            gameState.gameStage = .Won if gameState.boss.isAlive == false else .Lost
+            if gameState.playerHP == 0 {
+                gameState.gameStage = .Lost
+            }
+            else {
+                gameState.gameStage = .Won
+            }
         }
     }
 
@@ -409,11 +438,6 @@ GameplayRender :: proc() {
         dm.DrawSprite(gameState.bossSprite, boss.position)
     }
 
-    toBoss := gameState.player.position - gameState.boss.position
-
-    angle := math.atan2(toBoss.y, toBoss.x) + math.PI / 2
-    pos := gameState.player.position - glsl.normalize(toBoss) + {0, .75}
-    dm.DrawSprite(gameState.arrowSprite, pos, rotation = angle)
 
     // Bullets
     for &bullet in gameState.bullets {
@@ -429,10 +453,25 @@ GameplayRender :: proc() {
     // UI
     DrawGameUI()
 
+    // Arrow
+    cBounds := dm.GetCameraBounds(gameState.camera)
+    if dm.IsInBounds(cBounds, gameState.boss.position) == false {
+        toBoss := PlayerPos() - gameState.boss.position
+        angle := math.atan2(toBoss.y, toBoss.x) + math.PI / 2
+
+        // pos := PlayerPos() - glsl.normalize(toBoss)
+        pos := gameState.boss.position
+        pos.x = math.clamp(pos.x, cBounds.left, cBounds.right)
+        pos.y = math.clamp(pos.y, cBounds.bot, cBounds.top)
+        dm.DrawSprite(gameState.arrowSprite, pos, rotation = angle)
+    }
+
     if gameState.playerHP == 0 ||
        gameState.boss.isAlive == false
     {
         alpha := 1 - gameState.levelEndFadeTimer / END_GAME_FADE_TIME
-        dm.DrawRectBlank({0, 0}, dm.ToV2(dm.renderCtx.frameSize), origin = {0, 0}, color = {0, 0, 0, alpha})
+        color := BACK_COLOR
+        color.a = alpha
+        dm.DrawRectBlank({0, 0}, dm.ToV2(dm.renderCtx.frameSize), origin = {0, 0}, color = color)
     }
 }

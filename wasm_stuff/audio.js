@@ -1,3 +1,13 @@
+class Sound {
+    constructor() {
+        this.buffer = null
+        this.audioSource = null
+        this.gainNode = null
+        this.looping = false
+        this.volume = 1
+    }
+}
+
 class WebAudioInterface {
     constructor(wasmMemoryInterface) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -22,31 +32,91 @@ class WebAudioInterface {
                 let that = this;
                 this.audioCtx.decodeAudioData(content, (buffer) => {
                     console.log("Decoded audio clip...")
-                    that.sounds.set(filePtr, buffer);
+                    
+                    let sound = new Sound()
+                    if(that.sounds.has(filePtr)) {
+                        sound = that.sounds.get(filePtr)
+                    }
+
+                    sound.buffer = buffer
+                    that.sounds.set(filePtr, sound);
                 },
                 (error) => {
                     console.error("Failed to decode audio:", error);
                 })
             },
 
-            Play: (key, volume) => {
+            Play: (key) => {
                 if(this.sounds.has(key)) {
+                    let sound = this.sounds.get(key)
+                    if(sound.audioSource !== null) {
+                        sound.audioSource.stop()
+                    }
+
+                    // console.log("Trying to play")
+
                     let gainNode = this.audioCtx.createGain();
-                    gainNode.gain.value = volume;
-                    // gainNode.connect(this.audioCtx.destination);
+                    gainNode.gain.value = sound.volume;
 
                     let src = this.audioCtx.createBufferSource();
-                    src.buffer = this.sounds.get(key);
+                    src.buffer = sound.buffer;
+                    src.loop = sound.looping;
                     src.connect(gainNode)
                        .connect(this.audioCtx.destination);
                     src.start();
+
+                    // console.log(sound.looping)
+
+                    sound.audioSource = src
+                    sound.gainNode = gainNode
+
+                    this.sounds.set(key, sound)
                 }
                 else {
-                    // console.error("Sound doesn't exists in dictionary");
+                    console.log("Sound doesn't exists in dictionary");
+                }
+            },
+
+            jsSetVolume: (key, volume) => {
+                if(this.sounds.has(key)) {
+                    let sound = this.sounds.get(key);
+                    sound.value = sound.volume;
+
+                    if(sound.gainNode !== null) {
+                        sound.gainNode.gain.volume = volume
+                    }
+
+                    this.sounds.set(key, sound);
+                }
+                else {
+                    let sound = new Sound();
+                    sound.volume = volume;
+
+                    this.sounds.set(key, sound);
                 }
             },
 
 
+            jsSetLooping: (key, looping) => {
+                if(this.sounds.has(key)) {
+                    let sound = this.sounds.get(key);
+                    sound.looping = looping;
+
+                    if(sound.audioSource !== null) {
+                        sound.audioSource.loop = looping
+                    }
+
+                    this.sounds.set(key, sound);
+                }
+                else {
+                    let sound = new Sound();
+                    sound.looping = looping;
+
+                    this.sounds.set(key, sound);
+
+                    // console.log("Sound doesn't exists in dictionary");
+                }
+            },
         }
     }
 }

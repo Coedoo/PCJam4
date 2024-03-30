@@ -49,40 +49,43 @@ ControlPlayer :: proc(player: ^Player) {
     isWalking := dm.GetMouseButton(.Right) == .Down
     speed:f32 = isWalking ? PLAYER_WALK_SPEED : PLAYER_MOVE_SPEED
 
-    move := v2{horizontal, vertical} * speed * f32(dm.time.deltaTime)
-    for wall in gameState.level.walls {
-        // X check
-        playerBounds := dm.CreateBounds(player.position + {move.x, 0}, player.wallCollisionSize)
-        if dm.CheckCollisionBounds(playerBounds, wall.bounds) {
-            delta: f32
-            if move.x > 0 {
-                delta = playerBounds.right - wall.bounds.left
-                move.x -= delta + 0.001
+    input := v2{horizontal, vertical}
+
+    if input != {0, 0} {
+        move := glsl.normalize(input) * speed * f32(dm.time.deltaTime)
+        for wall in gameState.level.walls {
+            // X check
+            playerBounds := dm.CreateBounds(player.position + {move.x, 0}, player.wallCollisionSize)
+            if dm.CheckCollisionBounds(playerBounds, wall.bounds) {
+                delta: f32
+                if move.x > 0 {
+                    delta = playerBounds.right - wall.bounds.left
+                    move.x -= delta + 0.001
+                }
+                else {
+                    delta = wall.bounds.right - playerBounds.left
+                    move.x += delta + 0.001
+                }
             }
-            else {
-                delta = wall.bounds.right - playerBounds.left
-                move.x += delta + 0.001
+
+            // Y Check
+            playerBounds = dm.CreateBounds(player.position + {0, move.y}, player.wallCollisionSize)
+            if dm.CheckCollisionBounds(playerBounds, wall.bounds) {
+                delta: f32
+                if move.y > 0 {
+                    delta = playerBounds.top - wall.bounds.bot
+                    move.y -= delta + 0.001
+                }
+                else {
+                    delta = wall.bounds.top - playerBounds.bot
+                    move.y += delta + 0.001
+                }
+
             }
         }
 
-        // Y Check
-        playerBounds = dm.CreateBounds(player.position + {0, move.y}, player.wallCollisionSize)
-        if dm.CheckCollisionBounds(playerBounds, wall.bounds) {
-            delta: f32
-            if move.y > 0 {
-                delta = playerBounds.top - wall.bounds.bot
-                move.y -= delta + 0.001
-            }
-            else {
-                delta = wall.bounds.top - playerBounds.bot
-                move.y += delta + 0.001
-            }
-
-        }
+        player.position += move
     }
-
-    player.position += move
-
     // aiming
     mouseWorldPos := dm.ScreenToWorldSpace(gameState.camera, dm.input.mousePos, dm.renderCtx.frameSize)
     mousePos := v2{mouseWorldPos.x, mouseWorldPos.y}
@@ -131,6 +134,10 @@ ControlPlayer :: proc(player: ^Player) {
     else {
         player.heading = .West
     }
+}
+
+PlayerPos :: proc() -> v2 {
+    return gameState.player.position + gameState.player.character.collisionOffset
 }
 
 //////////////////
@@ -257,7 +264,7 @@ ControlWeapon :: proc(weapon: ^WeaponVariant, muzzlePos: v2, aimAngle: f32) {
                 )
             }
 
-            dm.PlaySound(cast(dm.SoundHandle) dm.GetAsset("shotgun.mp3"))
+            // dm.PlaySound(cast(dm.SoundHandle) dm.GetAsset("shotgun.mp3"))
         }
 
         case Rifle:
