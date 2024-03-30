@@ -1,10 +1,10 @@
 package game
 
 PLAYER_MOVE_SPEED :: 5
+PLAYER_WALK_SPEED :: 3
 NOHURTY_TIME :: 3
 
 
-BOSS_HP :: 1000
 BOSS_COLL_SIZE :: v2{1, 2}
 PRE_SEQUENCE_WAIT :: 1
 
@@ -13,4 +13,4 @@ END_GAME_FADE_TIME :: 1
 PLAYER_COLL_RADIUS :: 0.15
 
 // cheats
-god_mode := true
+god_mode := false

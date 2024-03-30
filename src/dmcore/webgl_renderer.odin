@@ -21,7 +21,7 @@ PerFrameData :: struct {
 InitRenderContext :: proc(ctx: ^RenderContext) {
     assert(ctx != nil)
 
-    InitResourcePool(&ctx.textures, 16)
+    InitResourcePool(&ctx.textures, 128)
     InitResourcePool(&ctx.shaders, 16)
 
     ctx.DrawBatch = DrawBatch
@@ -33,7 +33,7 @@ InitRenderContext :: proc(ctx: ^RenderContext) {
     perFrameDataBuffer = gl.CreateBuffer()
     gl.BindBuffer(gl.UNIFORM_BUFFER, perFrameDataBuffer)
     gl.BufferData(gl.UNIFORM_BUFFER, size_of(PerFrameData), nil, gl.DYNAMIC_DRAW)
-    gl.BindBufferRange(gl.UNIFORM_BUFFER, PerFrameDataBindingPoint, 
+    gl.BindBufferRange(gl.UNIFORM_BUFFER, PerFrameDataBindingPoint,
                        perFrameDataBuffer, 0, size_of(PerFrameData))
     gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
 

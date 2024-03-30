@@ -71,6 +71,8 @@ LoadTextureFromMemoryCtx :: proc(renderCtx: ^RenderContext, data: []u8, filter :
     tex := CreateElement(renderCtx.textures)
     _InitTexture(renderCtx, tex, image.pixels.buf[:], image.width, image.height, image.channels, filter)
 
+    // fmt.println(tex)
+
     return tex.handle
 }
 

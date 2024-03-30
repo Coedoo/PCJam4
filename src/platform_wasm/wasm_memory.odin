@@ -9,7 +9,7 @@ import "core:fmt"
 wasmContext: runtime.Context
 
 // @TODO make it configurable
-tempBackingBuffer: [16 * mem.Megabyte]byte
+tempBackingBuffer: [64 * mem.Megabyte]byte
 tempArena: mem.Arena
 
 

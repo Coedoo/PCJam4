@@ -47,3 +47,6 @@ _SetVolume :: proc(sound: ^Sound, volume: f32) {
 
 _SetLooping :: proc(sound: ^Sound, looping: bool) {
 }
+
+_StopSound :: proc(audio: ^Audio, handle: SoundHandle) {
+}

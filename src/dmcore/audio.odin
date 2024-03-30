@@ -49,12 +49,24 @@ PlaySoundCtx :: proc(audio: ^Audio, handle: SoundHandle) {
     _PlaySound(audio, handle)
 }
 
+StopSound :: proc(handle: SoundHandle) {
+    StopSoundCtx(audio, handle)
+}
+StopSoundCtx :: proc(audio: ^Audio, handle: SoundHandle) {
+    _StopSound(audio, handle)
+}
+
+
 SetVolume :: proc(handle: SoundHandle, volume: f32) {
     SetVolumeCtx(audio, handle, volume)
 }
 
 SetVolumeCtx :: proc(audio: ^Audio, handle: SoundHandle, volume: f32) {
     sound := GetElementPtr(audio.sounds, handle)
+    if sound == nil {
+        return
+    }
+
     volume := clamp(volume, 0, 1)
     _SetVolume(sound, volume)
 
@@ -67,6 +79,10 @@ SetLooping :: proc(handle: SoundHandle, looping: bool) {
 
 SetLoopingCtx :: proc(audio: ^Audio, handle: SoundHandle, looping: bool) {
     sound := GetElementPtr(audio.sounds, handle)
+    if sound == nil {
+        return
+    }
+
     _SetLooping(sound, looping)
 
     sound._looping = looping

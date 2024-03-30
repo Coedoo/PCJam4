@@ -32,10 +32,6 @@ void main() {
 
     ivec2 i = ivec2(gl_VertexID & 2, (gl_VertexID << 1 & 2) ^ 3);
 
-
-    // mat2 rot = mat2(cos(aRot), -sin(aRot),
-    //                 sin(aRot), cos(aRot));
-
     mat2 rot = mat2(cos(aRot), sin(aRot),
                     -sin(aRot), cos(aRot));
     vec2 tp = rot * vec2(pos[i.x], pos[i.y]) + aPos;
@@ -65,6 +61,7 @@ void main() {
 
     vec3 c = color.rgb * color.a;
     FragColor = vec4(c, color.a) * texColor;
+    // FragColor = vec4(1,1,1,1);
 }
 
 #endif

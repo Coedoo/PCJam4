@@ -399,7 +399,7 @@ free_list_alloc :: proc(fl: ^Free_List, size, alignment: int) -> (data: []byte, 
 
     node, padding, prev_node := free_list_find(fl, size, alignment)
     if node == nil {
-        fmt.printf("Out of memory. We shouldn't be here.\n")
+        fmt.println("Out of memory. We shouldn't be here.")
         return nil, .Out_Of_Memory
     }
 
@@ -491,8 +491,18 @@ free_list_allocator_proc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mod
         }
 
         case .Resize, .Resize_Non_Zeroed: {
-            //fmt.printf("RESIZE CALLED AT LOCATION %v\n", location)
-            return nil, .Mode_Not_Implemented
+            // dest, error := free_list_alloc(fl, size, alignment)
+
+            // mem.zero(raw_data(dest), size)
+            // mem.copy(raw_data(dest), old_memory, old_size)
+
+            // free_list_free(fl, old_memory)
+
+            // fmt.println("Resizing. Removed", old_size, "bytes at", old_memory, ". Allocating", size, "at", dest)
+            // return dest, error
+            // return nil, .Mode_Not_Implemented
+            return mem.default_resize_bytes_align(mem.byte_slice(old_memory, old_size), size, alignment, free_list_allocator(fl))
+
         }
 
         case .Query_Features: {

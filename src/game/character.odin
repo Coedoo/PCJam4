@@ -46,7 +46,10 @@ ControlPlayer :: proc(player: ^Player) {
     horizontal := dm.GetAxis(.A, .D)
     vertical := dm.GetAxis(.S, .W)
 
-    move := v2{horizontal, vertical} * PLAYER_MOVE_SPEED * f32(dm.time.deltaTime)
+    isWalking := dm.GetMouseButton(.Right) == .Down
+    speed:f32 = isWalking ? PLAYER_WALK_SPEED : PLAYER_MOVE_SPEED
+
+    move := v2{horizontal, vertical} * speed * f32(dm.time.deltaTime)
     for wall in gameState.level.walls {
         // X check
         playerBounds := dm.CreateBounds(player.position + {move.x, 0}, player.wallCollisionSize)
@@ -89,8 +92,15 @@ ControlPlayer :: proc(player: ^Player) {
     angle := math.atan2(aimDelta.y, aimDelta.x)
     player.gunRotation = angle
 
+    rotMat := matrix[2, 2]f32 {
+        math.cos(angle), -math.sin(angle),
+        math.sin(angle),  math.cos(angle)
+    }
+
+    // dm.DrawLine(dm.renderCtx, gunPos, mousePos, false)
+
     // shooting
-    muzzlePos := gunPos + glsl.normalize(aimDelta) + player.character.muzzleOffset
+    muzzlePos := gunPos + glsl.normalize(aimDelta) + (rotMat * player.character.muzzleOffset)
     ControlWeapon(&player.character.weapon, muzzlePos, angle)
     
     player.character.gunSprite.flipY = math.abs(angle) > math.PI / 2
@@ -98,7 +108,13 @@ ControlPlayer :: proc(player: ^Player) {
     // camera control
     // @NOTE: I'm not sure if I wanted it here
 
-    cameraPos := player.position + aimDelta * 0.3
+    target := player.position + aimDelta * 0.3
+    cameraPos := math.lerp(
+                    dm.ToV2(gameState.camera.position),
+                    target,
+                    20 * f32(dm.time.deltaTime
+                ))
+
     gameState.camera.position = {cameraPos.x, cameraPos.y, 1}
 
     // heading
@@ -156,6 +172,13 @@ BulletType :: enum {
     Pointy,
 }
 
+BulletColors := [BulletType]dm.color {
+    .Ball = {1, 0, 0, 1},
+    .Rect = {1, 1, 0, 1},
+    .Manta = {0, 0, 1, 1},
+    .Pointy ={0.3, 0, .8, 1},
+}
+
 Bullet :: struct {
     spawnTime: f32,
 
@@ -165,12 +188,20 @@ Bullet :: struct {
     angleChange: f32,
     radius: f32,
 
+    type: BulletType,
     sprite: dm.Sprite,
 
     isPlayerBullet: bool,
 }
 
-MaemiCharacter: Character
+GetDMG :: proc(weapon: WeaponVariant) -> int {
+    switch w in weapon {
+        case Shotgun: return w.dmg
+        case Rifle: return w.dmg
+    }
+
+    return 0
+}
 
 UpdateBullet :: proc(bullet: ^Bullet) {
     bullet.rotation += bullet.angleChange * f32(dm.time.deltaTime)
@@ -185,7 +216,7 @@ UpdateBullet :: proc(bullet: ^Bullet) {
 SpawnBullet :: proc(
     position: v2, 
     rotation: f32,
-    sprite: dm.Sprite,
+    type: BulletType,
     isPlayerBullet: bool,
     radius := f32(0.2),
     speed := f32(10),
@@ -198,7 +229,8 @@ SpawnBullet :: proc(
         angleChange = angleChange,
         spawnTime = f32(dm.time.gameTime),
 
-        sprite = sprite,
+        type = type,
+        sprite = gameState.bulletSprites[type],
 
         radius = radius,
         speed = speed,
@@ -218,12 +250,14 @@ ControlWeapon :: proc(weapon: ^WeaponVariant, muzzlePos: v2, aimAngle: f32) {
                 SpawnBullet(
                     muzzlePos, 
                     aimAngle + math.to_radians(variation),
-                    gameState.bulletSprites[w.bullet], 
+                    w.bullet, 
                     true, 
                     radius = w.bulletSize,
                     speed = w.bulletSpeed
                 )
             }
+
+            dm.PlaySound(cast(dm.SoundHandle) dm.GetAsset("shotgun.mp3"))
         }
 
         case Rifle:
@@ -239,7 +273,7 @@ ControlWeapon :: proc(weapon: ^WeaponVariant, muzzlePos: v2, aimAngle: f32) {
             SpawnBullet(
                 muzzlePos, 
                 aimAngle,
-                gameState.bulletSprites[w.bullet], 
+                w.bullet, 
                 true, 
                 radius = w.bulletSize,
                 speed = w.bulletSpeed

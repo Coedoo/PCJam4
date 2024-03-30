@@ -19,6 +19,11 @@ Boss :: struct {
 }
 
 //////////////////
+Phase :: struct {
+    hp: f32,
+    sequence: Sequence,
+}
+
 SequenceType :: enum {
     Serial,
     Parallel,
@@ -46,6 +51,7 @@ SequenceStep :: union {
     Sequence,
     MoveTo,
     FireBullet,
+    FireShotgun,
 }
 
 WaitSeconds :: struct {
@@ -74,6 +80,13 @@ FireBullet :: struct {
     target: FireTarget,
 }
 
+FireShotgun :: struct {
+    bullet: BulletType,
+    count: int,
+    speed: f32,
+    arcAngle: f32,
+}
+
 MoveTo :: struct {
     _from: v2,
     to: v2,
@@ -84,6 +97,7 @@ MoveTo :: struct {
 
 SequenceStopPredicate :: union #no_nil {
     Never,
+    Once,
     AfterTime,
     AfterIter,
 }
@@ -96,119 +110,204 @@ AfterIter :: struct {
     count: int
 }
 
+Once :: struct {}
 Never :: struct {}
 
 ////
 
-BossSequence := []Sequence{
+BossSequence := []Phase{
     // Phase 1
-    Sequence{
-        steps = {
-            MoveTo{to = {0, 3}, time = 1},
+    {
+        hp = 400,
+        sequence = {
+            steps = {
+                MoveTo{to = {0, 3}, time = 1},
 
-            Sequence {
-                steps = {
-                    Sequence {
-                        stop = AfterIter{20},
-                        steps = {
-                            FireBullet {
-                                .Pointy,
-                                8,
-                                .Player
+                Sequence {
+                    steps = {
+                        Sequence {
+                            stop = Once{},
+                            steps = {
+                                Sequence {
+                                    stop = AfterIter{20},
+                                    steps = {
+                                        FireBullet {
+                                            .Pointy,
+                                            8,
+                                            .Player
+                                        },
+                                        WaitSeconds{0.1}
+                                    }
+                                },
                             },
-                            WaitSeconds{0.1}
-                        }
+                        },
+
+                        FireShotgun{.Manta, 7, 7, math.PI / 3 },
+                        WaitSeconds{0.5},
                     },
-                    WaitSeconds{0.5}
-                },
-            },
+                }
+            }
         }
     },
 
     // Phase 2
-    Sequence{
-        steps = {
-            MoveTo{to={0, 0}, time=0.5},
+    {
+        hp = 1000,
+        sequence = {
+            steps = {
+                MoveTo{to={0, 0}, time=0.5},
 
-            Sequence {
-                type = .Parallel,
-                steps = {
-                    Sequence {
-                        stop = AfterIter{6},
-                        steps = {
-                            FireCircle{10, 1, 0, 4, .Manta, 6},
-                            WaitSeconds{0.3}
+                Sequence {
+                    type = .Parallel,
+                    steps = {
+                        Sequence {
+                            stop = AfterIter{6},
+                            steps = {
+                                FireCircle{16, .4, 0, 4, .Manta, 6},
+                                WaitSeconds{0.3}
+                            },
                         },
-                    },
 
-                    Sequence {
-                        stop = AfterIter{6},
-                        steps = {
-                            FireCircle{10, 1, 0, -4, .Manta, 6},
-                            WaitSeconds{0.3}
-                        }
-                    },
+                        Sequence {
+                            stop = AfterIter{6},
+                            steps = {
+                                FireCircle{16, .4, 0, -4, .Manta, 6},
+                                WaitSeconds{0.3}
+                            }
+                        },
+                    }
+                }
+            }
+        },
+    },
+
+    // Phase 3
+    {
+        hp = 1000,
+        sequence = {
+            steps = {
+                MoveTo{to={0, 4}, time=0.5},
+
+                Sequence {
+                    type = .Serial,
+                    steps = {
+                        MoveTo{to={6, 4.5}, time=0.5},
+                        FireCircle{16, .5, 0, 0, .Ball, 3},
+
+                        Sequence {
+                            stop = AfterIter{10},
+                            steps = {
+                                FireBullet { .Pointy, 8, .Player},
+                                WaitSeconds{0.05}
+                            },
+                        },
+
+                        MoveTo{to={0, 4.5}, time=0.5},
+                        FireCircle{16, .5, 0, 0, .Ball, 3},
+
+                        Sequence {
+                            stop = AfterIter{10},
+                            steps = {
+                                FireBullet { .Pointy, 8, .Player},
+                                WaitSeconds{0.05}
+                            },
+                        },
+
+                        MoveTo{to={-6, 4.5}, time=0.5},
+                        FireCircle{16, .5, 0, 0, .Ball, 3},
+
+                        Sequence {
+                            stop = AfterIter{10},
+                            steps = {
+                                FireBullet { .Pointy, 8, .Player},
+                                WaitSeconds{0.05}
+                            },
+                        },
+
+                        MoveTo{to={0, 4.5}, time=0.5},
+                        FireCircle{16, .5, 0, 0, .Ball, 3},
+
+                        Sequence {
+                            stop = AfterIter{10},
+                            steps = {
+                                FireBullet { .Pointy, 8, .Player},
+                                WaitSeconds{0.05}
+                            },
+                        },
+
+                    }
                 }
             }
         }
     },
 
-    // Phase 3
-    Sequence{
-        steps = {
-            MoveTo{to={0, 4}, time=0.5},
+    // Phase 4
+    {
+        hp = 1000,
+        sequence = {
+            steps = {
+                MoveTo{to={0, 5}, time=0.5},
 
-            Sequence {
-                type = .Serial,
+                Sequence {
                 steps = {
-                    MoveTo{to={6, 4.5}, time=0.5},
-                    FireCircle{16, 1, 0, 0, .Ball, 3},
-
                     Sequence {
-                        stop = AfterIter{10},
+                        type = .Parallel,
+                        stop = AfterTime{0.8},
                         steps = {
-                            FireBullet { .Pointy, 8, .Player},
-                            WaitSeconds{0.05}
-                        },
+                            MoveTo{to = {-5, -5}, time = 0.8},
+                            Sequence {
+                                steps = {
+                                    FireCircle{12, .5, 0, 0, .Ball, 5},
+                                    WaitSeconds{.15},
+                                }
+                            }
+                        }
                     },
 
-                    MoveTo{to={0, 4.5}, time=0.5},
-                    FireCircle{16, 1, 0, 0, .Ball, 3},
+                    //////////////
+
+                    WaitSeconds{2},
+
 
                     Sequence {
-                        stop = AfterIter{10},
+                        type = .Parallel,
+                        stop = AfterTime{0.8},
+
                         steps = {
-                            FireBullet { .Pointy, 8, .Player},
-                            WaitSeconds{0.05}
-                        },
+                            MoveTo{to = {5, -5}, time = 0.8},
+                            Sequence {
+                                steps = {
+                                    FireCircle{12, .5, 0, 0, .Ball, 5},
+                                    WaitSeconds{.15}
+                                }
+                            }
+                        }
                     },
 
-                    MoveTo{to={-6, 4.5}, time=0.5},
-                    FireCircle{16, 1, 0, 0, .Ball, 3},
+                    ///////////////
+
+                    WaitSeconds{2},
 
                     Sequence {
-                        stop = AfterIter{10},
+                        type = .Parallel,
+                        stop = AfterTime{0.8},
                         steps = {
-                            FireBullet { .Pointy, 8, .Player},
-                            WaitSeconds{0.05}
-                        },
+                            MoveTo{to = {0, 5}, time = 0.8},
+                            Sequence {
+                                steps = {
+                                    FireCircle{12, .5, 0, 0, .Ball, 5},
+                                    WaitSeconds{.15}
+                                }
+                            }
+                        }
                     },
 
-                    MoveTo{to={0, 4.5}, time=0.5},
-                    FireCircle{16, 1, 0, 0, .Ball, 3},
-
-                    Sequence {
-                        stop = AfterIter{10},
-                        steps = {
-                            FireBullet { .Pointy, 8, .Player},
-                            WaitSeconds{0.05}
-                        },
-                    },
-
+                    WaitSeconds{2},
                 }
-            }
-        }
-    }
+            }}
+        },
+    },
+
 }
 
 /////////
@@ -219,15 +318,15 @@ UpdateBoss :: proc(boss: ^Boss) {
         return
     }
 
-    seq := &BossSequence[boss.currentSeqIdx]
-    RunSequence(boss, seq)
+    phase := &BossSequence[boss.currentSeqIdx]
+    RunSequence(boss, &phase.sequence)
 }
 
 ResetBossSequence :: proc(boss: ^Boss) {
     boss.waitingTimer = PRE_SEQUENCE_WAIT
 
-    seq := &BossSequence[boss.currentSeqIdx]
-    ResteSequence(seq, boss)
+    phase := &BossSequence[boss.currentSeqIdx]
+    ResteSequence(&phase.sequence, boss)
 }
 
 BossNextSequence :: proc(boss: ^Boss) -> bool {
@@ -237,7 +336,7 @@ BossNextSequence :: proc(boss: ^Boss) -> bool {
         return false
     }
     else {
-        boss.hp = BOSS_HP
+        boss.hp = BossSequence[boss.currentSeqIdx].hp
         ResetBossSequence(boss)
         return true
     }
@@ -252,16 +351,19 @@ RotOffset :: proc(rot: f32, radius: f32) -> v2 {
 }
 
 RunSequence :: proc(boss: ^Boss, sequence: ^Sequence) -> bool {
+    finished := false
     if sequence.type == .Parallel {
         finishedCount := 0
         for &step in sequence.steps {
             if RunStep(&step, sequence.stepT, sequence.iterations, boss) {
-
+                finishedCount += 1
             }
         }
 
         sequence.iterations += 1
         sequence.stepT += f32(dm.time.deltaTime)
+
+        finished = finishedCount == len(sequence.steps)
     }
     else if sequence.type == .Serial {
         if RunStep(&sequence.steps[sequence.stepIndex], sequence.stepT, sequence.iterations, boss) {
@@ -276,6 +378,7 @@ RunSequence :: proc(boss: ^Boss, sequence: ^Sequence) -> bool {
             sequence.stepIndex = (sequence.stepIndex + 1) % len(sequence.steps)
             ResetStep(&sequence.steps[sequence.stepIndex], boss)
 
+            finished = sequence.stepIndex == 0
             // if seq, ok := &sequence.steps[sequence.stepIndex].(Sequence); ok {
             //     ResetSequence(seq)
             // }
@@ -290,6 +393,8 @@ RunSequence :: proc(boss: ^Boss, sequence: ^Sequence) -> bool {
     switch p in sequence.stop {
     case Never: 
         return false
+    case Once:
+        return finished
     case AfterIter:
         return sequence.iterations > p.count
     case AfterTime:
@@ -322,6 +427,7 @@ ResetStep :: proc(step: ^SequenceStep, boss: ^Boss) {
         ResteSequence(&s, boss)
 
     case FireBullet:
+    case FireShotgun:
     }
 }
 
@@ -340,7 +446,7 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
             rot := f32(i) / f32(s.count - 1) * 360 + s.iterAngle * f32(iteration)
             SpawnBullet(boss.position + RotOffset(rot, s.radius) + s.spawnOffset, 
                         math.to_radians(rot),
-                        gameState.bulletSprites[s.bullet],
+                        s.bullet,
                         false,
                         speed = s.speed,
                     )
@@ -354,11 +460,28 @@ RunStep :: proc(step: ^SequenceStep, t: f32, iteration: int, boss: ^Boss) -> boo
 
         SpawnBullet(boss.position, 
             angle,
-            gameState.bulletSprites[s.bullet],
+            s.bullet,
             false,
             speed = s.speed,
         )
-    
+    case FireShotgun:
+        delta := gameState.player.position - boss.position
+        angle := math.atan2(delta.y, delta.x)
+
+        angleStep := s.arcAngle / f32(s.count)
+        angle -= s.arcAngle / 2
+
+        for i in 0..<s.count {
+            SpawnBullet(boss.position, 
+                angle,
+                s.bullet,
+                false,
+                speed = s.speed,
+            )
+
+            angle += angleStep
+        }
+
     case Sequence:
         return RunSequence(boss, &s)
 

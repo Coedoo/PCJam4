@@ -25,11 +25,13 @@ Level :: struct {
 }
 
 LoadLevel :: proc(gameState: ^GameState) {
-    tilesHandle := dm.GetTextureAsset("tiles.png")
-    levelAsset := dm.GetAssetData("level.ldtk")
-    defer dm.ReleaseAssetData("level.ldtk")
+    // tilesHandle := dm.GetTextureAsset("tiles.png")
+    // levelAsset := dm.GetAssetData("level.ldtk")
+    tilesHandle := dm.LoadTextureFromMemory(TilesAsset)
+    levelAsset := LevelAsset
+    // defer dm.ReleaseAssetData("level.ldtk")
 
-    project, ok := ldtk.load_from_memory(levelAsset.fileData).?
+    project, ok := ldtk.load_from_memory(levelAsset).?
 
     if ok == false {
         fmt.eprintln("Failed to load level file")

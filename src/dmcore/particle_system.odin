@@ -120,14 +120,17 @@ InitParticleSystem :: proc(system: ^ParticleSystem) {
     // AddParticles(system, system.burstCount)
 }
 
-AddParticles :: proc(system: ^ParticleSystem, count: int) {
+SpawnParticles :: proc(system: ^ParticleSystem, count: int, 
+    atPosition: Maybe(v2) = nil, 
+    tint := color{1, 1, 1, 1})
+{
     maxToAdd := system.maxParticles - len(system.particles)
     count := min(count, maxToAdd)
 
     for i in 0..<count {
         particle := Particle {
             velocity = RandAtUnitCircle(),
-            position = system.position,
+            position = atPosition.? or_else system.position,
             rotationSpeed = (rand.float32() * 2 - 1),
         }
 
@@ -143,10 +146,10 @@ AddParticles :: proc(system: ^ParticleSystem, count: int) {
 
         switch s in system.startColor {
             case color: 
-                particle.startColor = s
+                particle.startColor = s * tint
             case RandomColor:
                 v :=  EvaluateRandomProp(s)
-                particle.startColor = v
+                particle.startColor = v * tint
         }
 
         switch s in system.startSize {
@@ -165,7 +168,7 @@ UpdateParticleSystem :: proc(system: ^ParticleSystem, deltaTime: f32) {
     // Burst
     if system.burstCount != 0 {
         if system.burstTimer <= 0 {
-            AddParticles(system, system.burstCount)
+            SpawnParticles(system, system.burstCount)
             system.burstTimer = system.burstInterval
         }
         system.burstTimer -= deltaTime
@@ -176,7 +179,7 @@ UpdateParticleSystem :: proc(system: ^ParticleSystem, deltaTime: f32) {
     toAdd := int(system.toAdd)
     system.toAdd -= f32(toAdd)
 
-    AddParticles(system, toAdd)
+    SpawnParticles(system, toAdd)
 
     // State update
     #reverse for &particle, i in system.particles {

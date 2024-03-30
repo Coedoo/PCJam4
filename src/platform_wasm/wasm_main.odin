@@ -24,22 +24,23 @@ assetsLoadingState: struct {
 
     finishedLoading: bool,
     nowLoading: ^dm.AssetData,
+    loadingIndex: int,
 }
 
 FileLoadedCallback :: proc(data: []u8) {
     assert(data != nil)
 
-    asset := assetsLoadingState.nowLoading
+    asset := platform.assets.toLoad[assetsLoadingState.loadingIndex]
 
     switch desc in asset.descriptor {
     case dm.TextureAssetDescriptor:
         asset.handle = cast(dm.Handle) dm.LoadTextureFromMemoryCtx(platform.renderCtx, data, desc.filter)
-        delete(data)
+        // delete(data)
 
     case dm.ShaderAssetDescriptor:
         str := strings.string_from_ptr(raw_data(data), len(data))
         asset.handle = cast(dm.Handle) dm.CompileShaderSource(platform.renderCtx, str)
-        delete(data)
+        // delete(data)
 
     case dm.FontAssetDescriptor:
         panic("FIX SUPPORT OF FONT ASSET LOADING")
@@ -49,11 +50,19 @@ FileLoadedCallback :: proc(data: []u8) {
 
     case dm.SoundAssetDescriptor:
         asset.handle = cast(dm.Handle) dm.LoadSoundFromMemoryCtx(&platform.audio, data)
-        delete(data)
+        // delete(data)
     }
 
-    assetsLoadingState.nowLoading = assetsLoadingState.nowLoading.next
+    // assetsLoadingState.nowLoading = assetsLoadingState.nowLoading.next
     assetsLoadingState.loadedCount += 1
+    assetsLoadingState.loadingIndex += 1
+
+    if assetsLoadingState.loadingIndex < assetsLoadingState.maxCount {
+        assetsLoadingState.nowLoading = platform.assets.toLoad[assetsLoadingState.loadingIndex]
+    }
+    else {
+        assetsLoadingState.nowLoading = nil
+    }
 
     LoadNextAsset()
 }
@@ -61,12 +70,15 @@ FileLoadedCallback :: proc(data: []u8) {
 LoadNextAsset :: proc() {
     if assetsLoadingState.nowLoading == nil {
         assetsLoadingState.finishedLoading = true
+        fmt.println("Finished Loading Assets")
         return
     }
 
     if assetsLoadingState.nowLoading.descriptor == nil {
         assetsLoadingState.nowLoading = assetsLoadingState.nowLoading.next
         assetsLoadingState.loadedCount += 1
+
+        fmt.println("Incorrect descriptor. Skipping")
     }
 
     path := strings.concatenate({dm.ASSETS_ROOT, assetsLoadingState.nowLoading.fileName}, context.temp_allocator)
@@ -100,7 +112,10 @@ main :: proc() {
     game.PreGameLoad(&platform.assets)
 
     assetsLoadingState.maxCount = len(platform.assets.assetsMap)
-    assetsLoadingState.nowLoading = platform.assets.firstAsset
+    if(assetsLoadingState.maxCount > 0) {
+        assetsLoadingState.nowLoading = platform.assets.toLoad[0]
+    }
+
     LoadNextAsset()
 }
 
@@ -113,6 +128,11 @@ step :: proc "contextless" (delta: f32, ctx: ^runtime.Context) {
 
     @static gameLoaded: bool
     if assetsLoadingState.finishedLoading == false {
+        // if assetsLoadingState.nowLoading != nil {
+        //     dm.DrawTextCentered(platform.renderCtx, fmt.tprint("Loading:", assetsLoadingState.nowLoading.fileName),
+        //         dm.LoadDefaultFont(platform.renderCtx), dm.ToV2(platform.renderCtx.frameSize) / 2)
+        //     dm.FlushCommands(platform.renderCtx)
+        // }
         return
     }
     else if gameLoaded == false {
@@ -170,6 +190,7 @@ step :: proc "contextless" (delta: f32, ctx: ^runtime.Context) {
                 key := JsKeyToKey[c]
                 input.curr[key] = .Down
         }
+
     }
     eventBufferOffset = 0
 

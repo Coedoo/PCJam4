@@ -113,7 +113,7 @@ main :: proc() {
                 panic("FIX SUPPORT OF FONT ASSET LOADING")
 
             case dm.SoundAssetDescriptor:
-                asset.handle = cast(dm.Handle) dm.LoadSound(path)
+                asset.handle = cast(dm.Handle) dm.LoadSoundFromFileCtx(&engineData.audio, path)
 
             case dm.RawFileAssetDescriptor:
                 data, ok := os.read_entire_file(path)

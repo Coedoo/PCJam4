@@ -5,7 +5,8 @@ import "core:fmt"
 
 DrawGameUI :: proc() {
     font := dm.LoadDefaultFont(dm.renderCtx)
-    icons := dm.GetTextureAsset("icons_ui.png")
+    // icons := dm.GetTextureAsset("icons_ui.png")
+    icons := gameState.icons
     frameSize := dm.ToV2(dm.renderCtx.frameSize)
 
     // timer
@@ -26,16 +27,19 @@ DrawGameUI :: proc() {
     }
 
     // Boss HP
-    bossHPBarSize := v2{frameSize.x * gameState.boss.hp / BOSS_HP, 20}
-    hpBarPos := v2{0, f32(dm.renderCtx.frameSize.y) - bossHPBarSize.y}
+    if gameState.boss.isAlive {
+        maxHp := BossSequence[gameState.boss.currentSeqIdx].hp
+        bossHPBarSize := v2{frameSize.x * gameState.boss.hp / maxHp, 20}
+        hpBarPos := v2{0, f32(dm.renderCtx.frameSize.y) - bossHPBarSize.y}
 
-    phasesLeft := len(BossSequence) - gameState.boss.currentSeqIdx
-    for i in 0..<phasesLeft {
-        pos := hpBarPos + {f32(i) * 21, -21}
-        dm.DrawRectBlank(pos, {20, 20}, origin = {0, 0}, color = dm.RED)
+        phasesLeft := len(BossSequence) - gameState.boss.currentSeqIdx
+        for i in 0..<phasesLeft {
+            pos := hpBarPos + {f32(i) * 21, -21}
+            dm.DrawRectBlank(pos, {20, 20}, origin = {0, 0}, color = dm.RED)
+        }
+
+        dm.DrawRectBlank(hpBarPos, bossHPBarSize, origin = {0, 0}, color = dm.RED)
     }
-
-    dm.DrawRectBlank(hpBarPos, bossHPBarSize, origin = {0, 0}, color = dm.RED)
 }
 
 ////////////////

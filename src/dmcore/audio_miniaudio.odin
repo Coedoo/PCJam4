@@ -78,9 +78,21 @@ _LoadSound :: proc(audio: ^Audio, path: string) -> SoundHandle {
 
 _PlaySound :: proc(audio: ^Audio, handle: SoundHandle) {
     sound := GetElementPtr(audio.sounds, handle)
+    if sound == nil {
+        return
+    }
 
     ma.sound_seek_to_pcm_frame(&sound.maSound, 0) 
     ma.sound_start(&sound.maSound)
+}
+
+_StopSound :: proc(audio: ^Audio, handle: SoundHandle) {
+    sound := GetElementPtr(audio.sounds, handle)
+    if sound == nil {
+        return
+    }
+
+    ma.sound_stop(&sound.maSound)
 }
 
 _SetVolume :: proc(sound: ^Sound, volume: f32) {

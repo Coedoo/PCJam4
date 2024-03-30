@@ -49,15 +49,16 @@ AssetData :: struct {
     // since you can't index map the easy way.
     // So the question is, wouldn't be better to just have array of
     // registered assets, and store them in map only after loading?
-    prev: ^AssetData,
+    // prev: ^AssetData,
     next: ^AssetData,
 }
 
 Assets :: struct {
     assetsMap: map[string]AssetData,
 
-    firstAsset: ^AssetData,
-    lastAsset: ^AssetData,
+    // firstAsset: ^AssetData,
+    // lastAsset: ^AssetData,
+    toLoad: [dynamic]^AssetData
 }
 
 RegisterAsset :: proc(fileName: string, desc: AssetDescriptor) {
@@ -77,15 +78,27 @@ RegisterAssetCtx :: proc(assets: ^Assets, fileName: string, desc: AssetDescripto
 
     // add to linked list
     assetPtr := &assets.assetsMap[fileName]
-    if assets.firstAsset == nil {
-        assets.firstAsset = assetPtr
-        assets.lastAsset = assetPtr
-    }
-    else {
-        assetPtr.prev = assets.lastAsset
-        assets.lastAsset.next = assetPtr
-        assets.lastAsset = assetPtr
-    }
+    append(&assets.toLoad, assetPtr)
+    // if assets.firstAsset == nil {
+    //     assets.firstAsset = assetPtr
+    //     assets.lastAsset = assetPtr
+    // }
+    // else {
+    //     // assetPtr.prev = assets.lastAsset
+
+    //     fmt.println("Prev:", assets.lastAsset.fileName, "Adding:", assetPtr.fileName)
+
+    //     assets.lastAsset.next = assetPtr
+    //     assets.lastAsset = assetPtr
+
+    //             a := platform.assets.firstAsset
+    //     for a != nil {
+    //         fmt.print(a.fileName)
+    //         fmt.print("->")
+    //         a = a.next
+    //     }
+    //     fmt.println()
+    // }
 }
 
 GetAssetData :: proc(fileName: string) -> ^AssetData {

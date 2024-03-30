@@ -10,7 +10,9 @@ class FilesInterface {
                 let path = this.wmi.loadString(pathPtr, pathLen)
                 
                 const req = new XMLHttpRequest();
+
                 req.open("GET", path);
+                req.setRequestHeader("Cache-Control", "no-cache, no-store, max-age=0");
                 req.responseType = "arraybuffer";
 
                 let that = this;

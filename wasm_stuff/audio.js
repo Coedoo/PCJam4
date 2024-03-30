@@ -42,9 +42,10 @@ class WebAudioInterface {
                     src.start();
                 }
                 else {
-                    console.error("Sound doesn't exists in dictionary");
+                    // console.error("Sound doesn't exists in dictionary");
                 }
             },
+
 
         }
     }

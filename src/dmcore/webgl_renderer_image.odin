@@ -3,6 +3,8 @@ package dmcore
 
 import gl "vendor:wasm/WebGL"
 
+import "core:fmt"
+
 TextureBackend :: struct {
     texId: gl.Texture
 }
